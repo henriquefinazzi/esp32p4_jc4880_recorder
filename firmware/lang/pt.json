@@ -18,7 +18,6 @@
   "about.memory": "Memória livre",
   "about.partition": "Área do firmware",
   "about.reset": "Último reinício",
-  "about.source": "Código-fonte",
   "about.title": "Sobre",
   "about.uptime": "Ligado há",
   "about.uptime.days": "%lu dias %lu h",
