@@ -7,6 +7,7 @@
 #include "app.h"
 #include "cJSON.h"
 #include "esp_crt_bundle.h"
+#include "display.h"
 #include "esp_heap_caps.h"
 #include "esp_http_client.h"
 #include "esp_https_ota.h"
@@ -133,15 +134,23 @@ static void install_task(void *arg)
         .buffer_size_tx = 4096, // and a long signed URL
         .keep_alive_enable = true,
     };
-    esp_https_ota_config_t cfg = {.http_config = &http};
+    // Erase the whole image area up front instead of piece by piece while downloading: on this board,
+    // each flash erase disturbs the display (it flashes blue). The backlight stays off during the erase.
+    esp_https_ota_config_t cfg = {.http_config = &http, .bulk_flash_erase = true};
     esp_https_ota_handle_t h = NULL;
     esp_err_t err = esp_https_ota_begin(&cfg, &h);
     if (err == ESP_OK) {
         int total = esp_https_ota_get_image_size(h);
         if (total <= 0) total = s_asset_size;
-        while ((err = esp_https_ota_perform(h)) == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
+        vTaskDelay(pdMS_TO_TICKS(1500)); // let the "screen turns off" message be read
+        display_backlight(false);
+        err = esp_https_ota_perform(h); // first call: erases the image area
+        display_backlight(true);
+        s_state = UPD_DOWNLOADING;
+        while (err == ESP_ERR_HTTPS_OTA_IN_PROGRESS) {
             int read = esp_https_ota_get_image_len_read(h);
             if (total > 0) s_progress = read * 100 / total;
+            err = esp_https_ota_perform(h);
         }
         if (err == ESP_OK && !esp_https_ota_is_complete_data_received(h)) err = ESP_FAIL;
         if (err == ESP_OK) {
@@ -166,7 +175,7 @@ static void install_task(void *arg)
 
 bool updater_check_start(void)
 {
-    if (s_state == UPD_CHECKING || s_state == UPD_DOWNLOADING || s_state == UPD_DONE) return false;
+    if (s_state == UPD_CHECKING || s_state == UPD_PREPARING || s_state == UPD_DOWNLOADING || s_state == UPD_DONE) return false;
     if (net_state() != NET_CONNECTED) {
         fail("update.err.no_wifi");
         return false;
@@ -190,7 +199,7 @@ bool updater_install_start(void)
     }
     app_set_updating(true); // no new recording: the device restarts at the end
     s_progress = 0;
-    s_state = UPD_DOWNLOADING;
+    s_state = UPD_PREPARING;
     if (xTaskCreate(install_task, "upd_install", 8192, NULL, 4, NULL) != pdPASS) {
         app_set_updating(false);
         fail("update.err.network");

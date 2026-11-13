@@ -1012,6 +1012,7 @@ static void update_text(char *out, size_t len)
     case UPD_CHECKING: strlcpy(out, T("update.checking"), len); break;
     case UPD_UP_TO_DATE: strlcpy(out, T("update.up_to_date"), len); break;
     case UPD_AVAILABLE: snprintf(out, len, T("update.available"), updater_latest()); break;
+    case UPD_PREPARING: strlcpy(out, T("update.preparing"), len); break;
     case UPD_DOWNLOADING: snprintf(out, len, T("update.downloading"), updater_progress()); break;
     case UPD_DONE: strlcpy(out, T("update.done"), len); break;
     case UPD_ERROR: strlcpy(out, T(updater_error_key()), len); break;

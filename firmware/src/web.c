@@ -30,6 +30,7 @@
 #include "rec_writer.h"
 #include "net.h"
 #include "ui.h"
+#include "display.h"
 
 #define MAX_RECORDINGS 60
 #define SEND_BUFFER_BYTES (16 * 1024)
@@ -348,7 +349,12 @@ static esp_err_t firmware_handler(httpd_req_t *req)
             if (filled < OTA_HEADER_BYTES && got < req->content_len) continue; // gather the header
             problem = check_header(buf);
             if (problem) break;
-            if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &ota) != ESP_OK) {
+            // Erase the whole image area now, with the backlight off: on this board each flash
+            // erase disturbs the display (it flashes blue), so it is done once instead of per chunk.
+            display_backlight(false);
+            esp_err_t begin_err = esp_ota_begin(part, req->content_len, &ota);
+            display_backlight(true);
+            if (begin_err != ESP_OK) {
                 problem = T("web.err.fw_prepare");
                 break;
             }

@@ -43,6 +43,14 @@ Default gain: 30 dB worked from 30 cm to 1 m without clipping.
 - Typical consumption: about 320 mA at 5 V.
 - Battery: 2-pin MX 1.25 connector, charged by the IP5306. Check the polarity before connecting a cell.
 
+## Flash erase and the display
+
+Every flash erase makes the display flash light blue for its duration (64 KB blocks: slow flashing; 4 KB
+sectors: fast flashing). Flash writes without erasing, Wi-Fi/HTTPS traffic and screen redraws do not.
+The DSI bridge reports no underrun, and running the code from PSRAM (`CONFIG_SPIRAM_XIP_FROM_PSRAM`)
+does not help. Firmware updates therefore erase the whole image area once, at the start, with the
+backlight off, and then only write.
+
 ## Not measured yet
 
 - Actual consumption with the screen on and off (to choose a battery).

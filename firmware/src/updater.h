@@ -14,6 +14,7 @@ typedef enum {
     UPD_CHECKING,
     UPD_UP_TO_DATE,
     UPD_AVAILABLE,
+    UPD_PREPARING, // erasing the firmware slot (screen dark)
     UPD_DOWNLOADING,
     UPD_DONE,      // written; the device restarts in a moment
     UPD_ERROR,
