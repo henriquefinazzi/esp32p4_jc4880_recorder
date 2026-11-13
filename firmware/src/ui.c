@@ -1043,9 +1043,22 @@ static const char *reset_text(void)
     }
 }
 
+#define PROJECT_URL "https://github.com/henriquefinazzi/esp32p4_jc4880_recorder"
+#define PROJECT_URL_SHORT "github.com/henriquefinazzi/\nesp32p4_jc4880_recorder"
+extern const lv_image_dsc_t logo_dark_ink, logo_light_ink;
+
 static void build_about(void)
 {
     header(T("about.title"), true, SCR_SETTINGS);
+
+    // Author logo, in the ink that suits the current theme.
+    lv_obj_t *brand = box(s_content, LV_FLEX_FLOW_COLUMN, 0);
+    lv_obj_set_width(brand, lv_pct(100));
+    center(brand);
+    pad(brand, 0, 4);
+    lv_obj_t *logo = lv_image_create(brand);
+    lv_image_set_src(logo, s_pal->dark ? &logo_light_ink : &logo_dark_ink);
+
     const esp_app_desc_t *d = esp_app_get_description();
     char fw[48], c6[24], idf[24], chip[40], mem[40], up[32], mac[24] = "—";
     snprintf(fw, sizeof(fw), "%s · %.6s", APP_VERSION, d->date);
@@ -1073,6 +1086,21 @@ static void build_about(void)
     data_row(c, T("about.memory"), mem, C_TEXT);
     data_row(c, T("about.uptime"), up, C_TEXT);
     data_row(c, T("about.reset"), reset_text(), C_TEXT);
+
+    // Source code: link and QR code to open it on a phone.
+    lv_obj_t *src = card(s_content, LV_FLEX_FLOW_ROW, 14);
+    lv_obj_t *frame = box(src, LV_FLEX_FLOW_COLUMN, 0);
+    bg(frame, C_WHITE, LV_OPA_COVER, 8);
+    pad(frame, 6, 6);
+    lv_obj_t *qr = lv_qrcode_create(frame);
+    lv_qrcode_set_size(qr, 96);
+    lv_qrcode_set_dark_color(qr, lv_color_hex(C_QR_DARK));
+    lv_qrcode_set_light_color(qr, lv_color_hex(C_WHITE));
+    lv_qrcode_update(qr, PROJECT_URL, strlen(PROJECT_URL));
+    lv_obj_t *txt = box(src, LV_FLEX_FLOW_COLUMN, 4);
+    lv_obj_set_flex_grow(txt, 1);
+    label(txt, T("about.source"), W_SEMIBOLD, 17, C_TEXT);
+    wrapped(txt, PROJECT_URL_SHORT, W_REGULAR, 14, C_MUTED, false);
 
     int p = net_wifi_fw_update_progress();
     s_about_progress = NULL;

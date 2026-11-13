@@ -18,6 +18,7 @@
   "about.memory": "Free memory",
   "about.partition": "Firmware slot",
   "about.reset": "Last restart",
+  "about.source": "Source code",
   "about.title": "About",
   "about.uptime": "Up for",
   "about.uptime.days": "%lu days %lu h",
