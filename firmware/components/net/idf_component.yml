@@ -1,0 +1,5 @@
+dependencies:
+  # Série 2.12: a mesma que o repositório ultramcu documenta para o C6 desta placa.
+  espressif/esp_hosted: "~2.12.0"
+  espressif/esp_wifi_remote: "*"
+  idf: ">=5.3"

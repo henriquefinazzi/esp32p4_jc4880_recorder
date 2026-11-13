@@ -1,0 +1,12 @@
+.pio/
+build/
+build-host/
+sdkconfig
+sdkconfig.old
+sdkconfig.*
+!sdkconfig.defaults
+managed_components/
+.DS_Store
+.vscode/
+*.swp
+compile_commands.json
