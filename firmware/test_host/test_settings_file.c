@@ -1,4 +1,4 @@
-// Testes do settings_file: ida e volta, valores inválidos, arquivo quebrado, lista de redes.
+// settings_file tests: round trip, invalid values, broken file, network list.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +9,7 @@ static int failures;
 #define CHECK(cond)                                                       \
     do {                                                                  \
         if (!(cond)) {                                                    \
-            printf("FALHOU %s:%d: %s\n", __FILE__, __LINE__, #cond);      \
+            printf("FAILED %s:%d: %s\n", __FILE__, __LINE__, #cond);      \
             failures++;                                                   \
         }                                                                 \
     } while (0)
@@ -74,15 +74,15 @@ static void partial_and_invalid(void)
     const char *t = "{\"aparelho\":{\"brilho\":5,\"apagar_tela_s\":30,\"ganho_db\":31},"
                     "\"navegador\":{\"ligado\":\"sim\",\"nome\":\"Meu-Gravador\",\"usuario\":\"ana\",\"senha\":\"abc\"}}";
     CHECK(settings_from_json(t, &a, &b, &ignored));
-    CHECK(ignored == 5);           // brilho, ganho, ligado, nome, senha
-    CHECK(b.brightness == 80);     // fora da faixa: mantém
-    CHECK(b.screen_off_s == 30);   // válido: aplica
-    CHECK(b.gain_db == 30);        // não é múltiplo de 6
+    CHECK(ignored == 5);           // brilho, ganho_db, ligado, nome, senha
+    CHECK(b.brightness == 80);     // out of range: kept
+    CHECK(b.screen_off_s == 30);   // valid: applied
+    CHECK(b.gain_db == 30);        // not a multiple of 6
     CHECK(b.web_on == true);
     CHECK(strcmp(b.host, "p4recorder") == 0);
     CHECK(strcmp(b.user, "ana") == 0);
     CHECK(strcmp(b.pass, "123456") == 0);
-    CHECK(b.wifi_count == 2);      // sem "wifi" no arquivo: mantém a lista
+    CHECK(b.wifi_count == 2);      // no "wifi" in the file: list kept
 }
 
 static void wifi_list(void)
@@ -95,13 +95,13 @@ static void wifi_list(void)
                     "{\"rede\":\"SemSenha\"},"
                     "{\"senha\":\"12345678\"}]}";
     CHECK(settings_from_json(t, &a, &b, &ignored));
-    CHECK(ignored == 3); // senha curta, repetida, sem nome
+    CHECK(ignored == 3); // short password, duplicate, no name
     CHECK(b.wifi_count == 2);
     CHECK(strcmp(b.wifi[0].ssid, "Nova") == 0 && strcmp(b.wifi[0].pass, "12345678") == 0);
     CHECK(strcmp(b.wifi[1].ssid, "SemSenha") == 0 && b.wifi[1].pass[0] == 0);
 
     CHECK(settings_from_json("{\"wifi\":[]}", &a, &b, &ignored));
-    CHECK(ignored == 0 && b.wifi_count == 0); // lista vazia esquece todas
+    CHECK(ignored == 0 && b.wifi_count == 0); // empty list forgets all
 
     CHECK(settings_from_json("{\"wifi\":[{\"rede\":\"a\"},{\"rede\":\"b\"},{\"rede\":\"c\"},{\"rede\":\"d\"},{\"rede\":\"e\"}]}", &a, &b, &ignored));
     CHECK(b.wifi_count == 4 && ignored == 1);
@@ -113,7 +113,7 @@ static void clock_and_ap(void)
     int ignored = 0;
     const char *t = "{\"relogio\":{\"ntp\":\"pool.ntp.org\"},\"rede_propria\":{\"ligada\":false,\"nome\":\"Sala 3\",\"senha\":\"curta\"}}";
     CHECK(settings_from_json(t, &a, &b, &ignored));
-    CHECK(ignored == 1);                          // senha curta
+    CHECK(ignored == 1);                          // short password
     CHECK(strcmp(b.ntp, "pool.ntp.org") == 0);
     CHECK(b.ap_on == false);
     CHECK(strcmp(b.ap_ssid, "Sala 3") == 0);
@@ -142,7 +142,7 @@ static void clock_and_ap(void)
     settings_t nopin = a;
     nopin.lock_pin[0] = 0;
     CHECK(settings_from_json("{\"bloqueio\":{\"ligado\":true}}", &nopin, &b, &ignored));
-    CHECK(!b.lock_on); // sem código válido, não liga
+    CHECK(!b.lock_on); // without a valid code, it does not turn on
     CHECK(settings_lock_pin_valid("0000") && !settings_lock_pin_valid("123") && !settings_lock_pin_valid("123456789"));
 }
 
@@ -184,7 +184,7 @@ int main(void)
     clock_and_ap();
     rules();
     if (failures) {
-        printf("%d falha(s)\n", failures);
+        printf("%d failure(s)\n", failures);
         return 1;
     }
     printf("settings_file: ok\n");

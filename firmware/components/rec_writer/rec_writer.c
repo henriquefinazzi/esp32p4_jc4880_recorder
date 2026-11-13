@@ -12,7 +12,7 @@
 #include "opus_shim.h"
 #include "wav_writer.h"
 
-#define MAX_FRAME 1152 // maior quadro entre os codificadores (MP3 MPEG-1); Opus 20 ms a 16 kHz = 320
+#define MAX_FRAME 1152 // largest frame among the encoders (MP3 MPEG-1); Opus 20 ms at 16 kHz = 320
 
 struct rec_writer {
     rec_format_t fmt;
@@ -22,9 +22,9 @@ struct rec_writer {
     ogg_opus_t *ogg;
     opus_shim_t *opus;
     shine_t mp3;
-    int frame;              // amostras por quadro do codificador
-    int16_t pending[MAX_FRAME] __attribute__((aligned(16))); // rotinas vetoriais do Opus
-    uint8_t pkt[1500] __attribute__((aligned(16)));          // pacote Opus (fora da pilha da tarefa)
+    int frame;              // samples per encoder frame
+    int16_t pending[MAX_FRAME] __attribute__((aligned(16))); // Opus vector routines
+    uint8_t pkt[1500] __attribute__((aligned(16)));          // Opus packet (off the task stack)
     int npending;
     uint64_t bytes;
 };
@@ -59,7 +59,7 @@ static int put_bytes(rec_writer_t *w, const void *p, size_t n)
     return 0;
 }
 
-// Codifica um quadro completo de w->pending.
+// Encodes one full frame from w->pending.
 static int encode_frame(rec_writer_t *w)
 {
     if (w->fmt == REC_FMT_OPUS) {

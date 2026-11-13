@@ -1,8 +1,8 @@
-// Núcleo do gravador: captura de áudio, gravação em WAV no microSD, configurações.
+// Recorder core: audio capture, WAV recording to microSD, settings.
 //
-// Duas tarefas cuidam do áudio: `audio` só lê o codec e nunca espera pelo cartão;
-// `gravacao` é a única dona do arquivo. Entre elas há um buffer de alguns segundos,
-// porque uma escrita no microSD pode travar por centenas de milissegundos.
+// Two tasks handle audio: `audio` only reads the codec and never waits for the card;
+// `recorder` is the sole owner of the file. Between them sits a buffer of a few seconds,
+// because a microSD write can stall for hundreds of milliseconds.
 #include <dirent.h>
 #include <errno.h>
 #include <math.h>
@@ -47,11 +47,11 @@
 #define BLOCK_SAMPLES 1600            // 100 ms
 #define BLOCK_BYTES (BLOCK_SAMPLES * sizeof(int16_t))
 #define BLOCKS_PER_SECOND 10
-#define CHECKPOINT_BLOCKS 20          // 2 s: uma queda de energia perde no máximo isso
-#define BUFFER_SECONDS 8              // folga para travadas do cartão
+#define CHECKPOINT_BLOCKS 20          // 2 s: a power loss loses at most this much
+#define BUFFER_SECONDS 8              // headroom for card stalls
 #define BUFFER_BYTES (BUFFER_SECONDS * BLOCKS_PER_SECOND * BLOCK_BYTES)
 #define DEBOUNCE_MS 50
-#define MIN_LISTED_BYTES 1024         // ignora restos de gravações que não chegaram a ter áudio
+#define MIN_LISTED_BYTES 1024         // ignores leftovers of recordings that never got any audio
 
 #define NVS_NAMESPACE "cfg"
 #define DEFAULT_GAIN_DB 30
@@ -60,12 +60,12 @@
 static const char *TAG = "recorder";
 
 static volatile bool s_toggle_requested;
-static volatile bool s_updating;              // recebendo firmware pelo Wi-Fi
-static volatile bool s_recording;          // a tarefa de áudio alimenta o buffer quando true
-static volatile uint32_t s_dropped_blocks; // blocos descartados por buffer cheio
+static volatile bool s_updating;              // receiving firmware over Wi-Fi
+static volatile bool s_recording;          // the audio task feeds the buffer when true
+static volatile uint32_t s_dropped_blocks; // blocks dropped because the buffer was full
 static StreamBufferHandle_t s_stream;
 
-// Estado lido pela interface.
+// State read by the interface.
 static volatile float s_level_dbfs = -96.0f;
 static volatile uint32_t s_rec_seconds;
 static volatile uint32_t s_rec_bytes;
@@ -85,7 +85,7 @@ static volatile bool s_autodelete;
 static volatile bool s_lock_on;
 static char s_lock_pin[APP_LOCK_PIN_MAX + 1];
 static volatile int s_lock_after_s = 300;
-static char s_lang[APP_LANG_MAX + 1] = "en"; // aparelho novo começa em inglês
+static char s_lang[APP_LANG_MAX + 1] = "en"; // a new device starts in English
 static char s_web_user[APP_WEB_USER_MAX + 1] = "recorder";
 static char s_web_pass[APP_WEB_PASS_MAX + 1];
 static char s_hostname[APP_HOSTNAME_MAX + 1] = "p4recorder";
@@ -97,7 +97,7 @@ static char s_ap_pass[APP_AP_PASS_MAX + 1];
 static volatile bool s_web_enabled = true;
 static bool s_net_ready;
 
-// ---------- Configurações ----------
+// ---------- Settings ----------
 
 static void cfg_set_str(const char *key, const char *value);
 
@@ -122,7 +122,7 @@ static void cfg_set(const char *key, int value)
     }
 }
 
-// ---------- API para a interface ----------
+// ---------- API for the interface ----------
 
 static void raise_event(app_event_t event, uint32_t seconds)
 {
@@ -161,7 +161,7 @@ void app_get_status(app_status_t *out)
 
 void app_toggle_recording(void)
 {
-    if (s_updating && !s_recording) return; // o aparelho vai reiniciar com o firmware novo
+    if (s_updating && !s_recording) return; // the device will restart with the new firmware
     s_toggle_requested = true;
 }
 
@@ -217,7 +217,7 @@ int app_rec_format(void)
 void app_set_rec_format(int fmt)
 {
     if (fmt < REC_FMT_WAV || fmt > REC_FMT_MP3) return;
-    s_rec_format = fmt; // vale a partir da próxima gravação
+    s_rec_format = fmt; // takes effect from the next recording
     cfg_set("fmt", fmt);
     config_changed();
 }
@@ -321,9 +321,9 @@ void app_set_brightness(int percent, bool save)
     }
 }
 
-// ---------- Gravações no cartão ----------
+// ---------- Recordings on the card ----------
 
-// Reconhece "REC_dddd.<ext>" e "REC_dddd <nome>.<ext>" (WAV, OPUS, MP3). Devolve o número e o nome.
+// Recognizes "REC_dddd.<ext>" and "REC_dddd <name>.<ext>" (WAV, OPUS, MP3). Returns the number and name.
 static bool parse_recording_file(const char *file, int *id, char *title, size_t title_len)
 {
     size_t len = strlen(file);
@@ -340,7 +340,7 @@ static bool parse_recording_file(const char *file, int *id, char *title, size_t 
         if (title && title_len) title[0] = 0;
     } else {
         if (file[8] != ' ' || len < 9 + ext) return false;
-        size_t tl = len - ext - 9; // entre "REC_dddd " e a extensão
+        size_t tl = len - ext - 9; // between "REC_dddd " and the extension
         if (tl == 0) return false;
         if (title && title_len) {
             if (tl >= title_len) tl = title_len - 1;
@@ -362,11 +362,11 @@ int app_list_recordings(app_recording_t *out, int max)
     if (!storage_is_mounted()) return 0;
     DIR *dir = opendir(STORAGE_MOUNT_POINT);
     if (!dir) {
-        ESP_LOGW(TAG, "lista: opendir falhou (errno %d)", errno);
+        ESP_LOGW(TAG, "list: opendir failed (errno %d)", errno);
         return 0;
     }
 
-    // Fica com as `max` mais recentes (maior número), qualquer que seja a ordem no cartão.
+    // Keeps the `max` most recent (highest number), whatever the order on the card.
     int n = 0;
     struct dirent *e;
     while ((e = readdir(dir)) != NULL) {
@@ -378,7 +378,7 @@ int app_list_recordings(app_recording_t *out, int max)
             for (int i = 1; i < n; i++) {
                 if (out[i].id < out[slot].id) slot = i;
             }
-            if (r.id <= out[slot].id) continue; // mais antiga que todas as já guardadas
+            if (r.id <= out[slot].id) continue; // older than all those already kept
         }
         char path[128];
         struct stat st;
@@ -387,7 +387,7 @@ int app_list_recordings(app_recording_t *out, int max)
         strlcpy(r.file, e->d_name, sizeof(r.file));
         r.bytes = (uint32_t)st.st_size;
         r.seconds = rec_seconds_from_size((rec_format_t)rec_format_from_name(e->d_name), SAMPLE_RATE_HZ, (uint64_t)st.st_size);
-        // Sem relógio acertado o FAT grava 1980; trate como "sem data".
+        // Without a set clock FAT writes 1980; treat it as "no date".
         r.mtime = st.st_mtime > 1700000000 ? st.st_mtime : 0;
         out[slot] = r;
         if (slot == n) n++;
@@ -397,7 +397,7 @@ int app_list_recordings(app_recording_t *out, int max)
     return n;
 }
 
-// Acha o arquivo de uma gravação pelo número, tenha ele nome ou não.
+// Finds a recording's file by number, whether it has a name or not.
 static bool find_recording_file(int id, char *file, size_t len)
 {
     if (!storage_is_mounted()) return false;
@@ -423,7 +423,7 @@ bool app_recording_path(int id, char *out, size_t len)
     return snprintf(out, len, STORAGE_MOUNT_POINT "/%s", file) < (int)len;
 }
 
-// Próximo número livre: um a mais que o maior existente, com ou sem nome.
+// Next free number: one more than the highest existing, with or without a name.
 static bool next_recording_path(char *out, size_t len)
 {
     if (!storage_is_mounted()) return false;
@@ -449,8 +449,8 @@ bool app_delete_recording(int id)
     return ok;
 }
 
-// Limpa o nome dado pelo usuário: tira o que o FAT não aceita em nomes de arquivo,
-// espaços nas pontas e ponto no fim, e corta em APP_TITLE_MAX sem partir um caractere UTF-8.
+// Cleans the user-given name: removes what FAT rejects in file names, leading/trailing
+// spaces and a trailing dot, and cuts at APP_TITLE_MAX without splitting a UTF-8 character.
 static void sanitize_title(const char *in, char *out, size_t out_len)
 {
     size_t o = 0;
@@ -458,11 +458,11 @@ static void sanitize_title(const char *in, char *out, size_t out_len)
     for (; *in && o + 1 < out_len; in++) {
         unsigned char c = (unsigned char)*in;
         if (c < 0x20 || strchr("\\/:*?\"<>|", c)) continue;
-        if (c == ' ' && o > 0 && out[o - 1] == ' ') continue; // sem espaços duplos
+        if (c == ' ' && o > 0 && out[o - 1] == ' ') continue; // no double spaces
         out[o++] = (char)c;
     }
     if (*in) {
-        // Cortado por tamanho: o último caractere pode ter ficado pela metade; descarta-o inteiro.
+        // Truncated by length: the last character may be cut in half; drop it entirely.
         while (o > 0 && ((unsigned char)out[o - 1] & 0xC0) == 0x80) o--;
         if (o > 0 && ((unsigned char)out[o - 1] & 0xC0) == 0xC0) o--;
     }
@@ -476,7 +476,7 @@ bool app_rename_recording(int id, const char *title)
     if (s_recording || !title || !find_recording_file(id, old_file, sizeof(old_file))) return false;
     sanitize_title(title, clean, sizeof(clean));
     snprintf(old_path, sizeof(old_path), STORAGE_MOUNT_POINT "/%s", old_file);
-    const char *ext = rec_format_ext((rec_format_t)rec_format_from_name(old_file)); // o formato não muda
+    const char *ext = rec_format_ext((rec_format_t)rec_format_from_name(old_file)); // the format doesn't change
     if (clean[0]) {
         snprintf(new_path, sizeof(new_path), STORAGE_MOUNT_POINT "/REC_%04d %s%s", id, clean, ext);
     } else {
@@ -491,7 +491,7 @@ bool app_format_card(void)
     if (s_recording) return false;
     bool ok = storage_format() == ESP_OK;
     refresh_space();
-    if (ok) config_changed(); // o arquivo de configuração foi junto: recria
+    if (ok) config_changed(); // the config file went along: recreate it
     return ok;
 }
 
@@ -646,7 +646,7 @@ void app_set_web_enabled(bool enabled)
     if (!enabled) {
         web_stop();
     } else if (s_net_ready && web_start(s_web_user, s_web_pass, s_hostname) != ESP_OK) {
-        ESP_LOGW(TAG, "web: nao iniciou");
+        ESP_LOGW(TAG, "web: did not start");
     }
 }
 
@@ -657,7 +657,7 @@ bool app_retry_card(void)
     return ok;
 }
 
-// ---------- Áudio e gravação ----------
+// ---------- Audio and recording ----------
 
 static void button_task(void *arg)
 {
@@ -693,15 +693,15 @@ static void audio_task(void *arg)
 
     for (;;) {
         if (audio_in_read(block, BLOCK_SAMPLES) != BLOCK_SAMPLES) {
-            ESP_LOGE(TAG, "leitura de audio falhou");
+            ESP_LOGE(TAG, "audio read failed");
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
 
-        if (s_filter) dsp_highpass_run(&hpf, block, BLOCK_SAMPLES); // roda sempre, para não estalar ao ligar
+        if (s_filter) dsp_highpass_run(&hpf, block, BLOCK_SAMPLES); // always runs, to avoid a click when turned on
 
         if (s_recording) {
-            // Bloco inteiro ou nada, para o arquivo nunca ficar com meia amostra.
+            // Whole block or nothing, so the file never ends up with half a sample.
             if (xStreamBufferSpacesAvailable(s_stream) >= BLOCK_BYTES) {
                 xStreamBufferSend(s_stream, block, BLOCK_BYTES, 0);
             } else {
@@ -718,8 +718,8 @@ static void audio_task(void *arg)
     }
 }
 
-// Cartão cheio com "apagar as mais antigas" ligado: apaga a partir da gravação de menor
-// número (nunca `keep`) até sobrar APP_AUTODELETE_MIN_MB. Devolve quantas apagou.
+// Card full with "delete oldest" on: deletes starting from the lowest-numbered recording
+// (never `keep`) until APP_AUTODELETE_MIN_MB is free. Returns how many were deleted.
 static int free_space_by_deleting(const char *keep)
 {
     if (!s_autodelete) return 0;
@@ -746,7 +746,7 @@ static int free_space_by_deleting(const char *keep)
         char path[160];
         snprintf(path, sizeof(path), STORAGE_MOUNT_POINT "/%s", oldest_file);
         if (unlink(path) != 0) break;
-        ESP_LOGI(TAG, "cartao cheio: apagada %s", oldest_file);
+        ESP_LOGI(TAG, "card full: deleted %s", oldest_file);
         deleted++;
     }
     return deleted;
@@ -777,22 +777,22 @@ static void recorder_task(void *arg)
             } else if ((wav = rec_writer_open(path, (rec_format_t)s_rec_format, SAMPLE_RATE_HZ)) == NULL) {
                 raise_event(errno == ENOSPC ? APP_EVENT_CARD_FULL : APP_EVENT_WRITE_ERROR, 0);
             } else {
-                const char *name = path + sizeof(STORAGE_MOUNT_POINT); // depois de "/sdcard/"
+                const char *name = path + sizeof(STORAGE_MOUNT_POINT); // after "/sdcard/"
                 strlcpy(s_rec_name, name, 9);                         // "REC_0023"
-                printf("gravando: %s\n", path);
+                printf("recording: %s\n", path);
                 rec_samples = 0;
                 blocks_since_checkpoint = 0;
                 s_rec_seconds = 0;
                 s_rec_bytes = 0;
                 s_dropped_blocks = 0;
                 xStreamBufferReset(s_stream);
-                storage_usb_enable(false); // o computador não pode tomar o cartão no meio do arquivo
+                storage_usb_enable(false); // the computer must not take the card mid-file
                 s_recording = true;
             }
         }
 
         if (wav) {
-            if (stop) s_recording = false; // para de alimentar; o laço abaixo esvazia o resto
+            if (stop) s_recording = false; // stop feeding; the loop below drains the rest
 
             size_t got;
             TickType_t wait = stop ? 0 : pdMS_TO_TICKS(100);
@@ -806,7 +806,7 @@ static void recorder_task(void *arg)
                         blocks_since_checkpoint = 0;
                         failed = rec_writer_checkpoint(wav) != 0;
                     }
-                    if (s_autodelete && ++blocks_since_space_check >= 300) { // a cada 30 s
+                    if (s_autodelete && ++blocks_since_space_check >= 300) { // every 30 s
                         blocks_since_space_check = 0;
                         free_space_by_deleting(path);
                     }
@@ -817,7 +817,7 @@ static void recorder_task(void *arg)
                     s_recording = false;
                     break;
                 }
-                wait = 0; // já há dados: esvazia sem esperar
+                wait = 0; // data already available: drain without waiting
                 if (!stop && s_toggle_requested) break;
             }
 
@@ -826,12 +826,12 @@ static void recorder_task(void *arg)
                 wav = NULL;
                 storage_usb_enable(true);
                 refresh_space();
-                printf("salvo: %s %lus perdidas=%lu%s\n", path, (unsigned long)s_rec_seconds,
-                       (unsigned long)s_dropped_blocks, rc == 0 ? "" : " (fechamento com erro)");
+                printf("saved: %s %lus dropped=%lu%s\n", path, (unsigned long)s_rec_seconds,
+                       (unsigned long)s_dropped_blocks, rc == 0 ? "" : " (close failed)");
                 raise_event(stop_event, s_rec_seconds);
             }
         } else {
-            // O cartão voltou do computador: atualizar o espaço livre.
+            // The card came back from the computer: refresh the free space.
             bool mounted = storage_is_mounted();
             if (mounted && !was_mounted) refresh_space();
             was_mounted = mounted;
@@ -840,11 +840,11 @@ static void recorder_task(void *arg)
     }
 }
 
-// Registro periódico de memória livre, para diagnosticar falta de RAM interna.
+// Periodic free-memory log, to diagnose internal RAM shortage.
 static void mem_task(void *arg)
 {
     for (;;) {
-        ESP_LOGI(TAG, "mem: interna livre=%u KB (minimo %u KB), psram livre=%u KB",
+        ESP_LOGI(TAG, "mem: internal free=%u KB (min %u KB), psram free=%u KB",
                  (unsigned)(heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024),
                  (unsigned)(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL) / 1024),
                  (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
@@ -854,7 +854,7 @@ static void mem_task(void *arg)
 
 void app_main(void)
 {
-    printf("gravador %s\n", APP_VERSION);
+    printf("recorder %s\n", APP_VERSION);
 
     logbuf_init();
     esp_err_t err = nvs_flash_init();
@@ -862,7 +862,7 @@ void app_main(void)
         nvs_flash_erase();
         err = nvs_flash_init();
     }
-    if (err != ESP_OK) printf("nvs: falhou (%s)\n", esp_err_to_name(err));
+    if (err != ESP_OK) printf("nvs: failed (%s)\n", esp_err_to_name(err));
     s_gain_db = cfg_get("gain", DEFAULT_GAIN_DB);
     s_screen_timeout_s = cfg_get("scr_off", DEFAULT_SCREEN_TIMEOUT_S);
     s_theme = cfg_get("theme", 0) ? 1 : 0;
@@ -877,7 +877,7 @@ void app_main(void)
         int after = cfg_get("lock_after", 300);
         s_lock_after_s = after == 60 || after == 900 ? after : 300;
     }
-    app_set_brightness(cfg_get("bright", 100), false); // vale a partir do momento em que a tela acende
+    app_set_brightness(cfg_get("bright", 100), false); // takes effect once the screen turns on
     char saved_cred[APP_WEB_PASS_MAX + 1];
     if (cfg_get_str("web_user", saved_cred, sizeof(saved_cred)) && settings_user_valid(saved_cred)) {
         strlcpy(s_web_user, saved_cred, sizeof(s_web_user));
@@ -885,7 +885,7 @@ void app_main(void)
     if (cfg_get_str("web_pass", saved_cred, sizeof(saved_cred)) && settings_pass_valid(saved_cred)) {
         strlcpy(s_web_pass, saved_cred, sizeof(s_web_pass));
     } else {
-        // Primeira vez (ou versão antiga, que guardava só a senha numérica): mantém o mesmo PIN.
+        // First time (or an old version that stored only the numeric password): keep the same PIN.
         int pin = cfg_get("web_pin", -1);
         if (pin < 0) pin = (int)(esp_random() % 1000000);
         snprintf(s_web_pass, sizeof(s_web_pass), "%06d", pin);
@@ -901,7 +901,7 @@ void app_main(void)
         strlcpy(s_ap_ssid, saved_str, sizeof(s_ap_ssid));
     } else {
         uint8_t mac[6] = {0};
-        esp_efuse_mac_get_default(mac); // nome diferente para cada aparelho
+        esp_efuse_mac_get_default(mac); // a different name for each device
         snprintf(s_ap_ssid, sizeof(s_ap_ssid), "P4Recorder-%02X%02X", mac[4], mac[5]);
         cfg_set_str("ap_ssid", s_ap_ssid);
     }
@@ -929,55 +929,55 @@ void app_main(void)
     gpio_config(&in);
 
     esp_err_t disp_err = display_init();
-    printf("tela: %s\n", disp_err == ESP_OK ? "pronta" : esp_err_to_name(disp_err));
+    printf("display: %s\n", disp_err == ESP_OK ? "ready" : esp_err_to_name(disp_err));
 
     if (storage_mount() == ESP_OK) {
         refresh_space();
-        printf("sd: montado, %lu MB livres\n", (unsigned long)s_free_mb);
+        printf("sd: mounted, %lu MB free\n", (unsigned long)s_free_mb);
     } else {
-        printf("sd: falhou\n");
+        printf("sd: failed\n");
     }
 
     err = audio_in_init(SAMPLE_RATE_HZ);
     if (err != ESP_OK) {
-        printf("audio: falhou (%s)\n", esp_err_to_name(err));
+        printf("audio: failed (%s)\n", esp_err_to_name(err));
     } else {
         audio_in_set_gain_db((float)s_gain_db);
-        printf("audio: pronto, ganho %d dB\n", s_gain_db);
+        printf("audio: ready, gain %d dB\n", s_gain_db);
     }
 
     static StaticStreamBuffer_t stream_struct;
     uint8_t *buffer = heap_caps_malloc(BUFFER_BYTES + 1, MALLOC_CAP_SPIRAM);
     if (!buffer) buffer = heap_caps_malloc(BUFFER_BYTES + 1, MALLOC_CAP_DEFAULT);
     if (!buffer) {
-        printf("memoria: sem espaco para o buffer de audio\n");
+        printf("memory: no room for the audio buffer\n");
         return;
     }
     s_stream = xStreamBufferCreateStatic(BUFFER_BYTES + 1, 1, buffer, &stream_struct);
 
     xTaskCreate(button_task, "botao", 2048, NULL, 5, NULL);
     if (err == ESP_OK) xTaskCreate(audio_task, "audio", 8192, NULL, 7, NULL);
-    // Pilha grande e núcleo fixo: o Opus usa as instruções vetoriais (PIE) do P4, cujo estado
-    // só é salvo na troca de tarefas quando a tarefa não muda de núcleo.
-    xTaskCreatePinnedToCore(recorder_task, "gravacao", 32 * 1024, NULL, 5, NULL, 1);
+    // Large stack and pinned core: Opus uses the P4's vector instructions (PIE), whose state
+    // is only saved on task switches when the task doesn't change cores.
+    xTaskCreatePinnedToCore(recorder_task, "recorder", 32 * 1024, NULL, 5, NULL, 1);
 
-    i18n_init(s_lang); // depois do cartão: idiomas extras vêm da pasta LANGUAGES
+    i18n_init(s_lang); // after the card: extra languages come from the LANGUAGES folder
     if (disp_err == ESP_OK) ui_init();
 
     xTaskCreate(mem_task, "mem", 3072, NULL, 1, NULL);
 
-    config_init(); // lê CONFIG.JSON do cartão antes de a rede e o servidor usarem as configurações
+    config_init(); // reads CONFIG.JSON from the card before the network and server use the settings
     esp_err_t net_err = net_init();
-    printf("rede: %s\n", net_err == ESP_OK ? "radio ligado" : esp_err_to_name(net_err));
+    printf("network: %s\n", net_err == ESP_OK ? "radio on" : esp_err_to_name(net_err));
     s_net_ready = net_err == ESP_OK;
     if (s_net_ready && s_web_enabled) {
         esp_err_t web_err = web_start(s_web_user, s_web_pass, s_hostname);
-        // Usuário e senha aparecem só na tela do aparelho.
-        printf("web: %s em http://%s.local\n", web_err == ESP_OK ? "servidor no ar" : esp_err_to_name(web_err), s_hostname);
+        // Username and password are shown only on the device screen.
+        printf("web: %s at http://%s.local\n", web_err == ESP_OK ? "server up" : esp_err_to_name(web_err), s_hostname);
     } else {
-        printf("web: desligado\n");
+        printf("web: off\n");
     }
 
-    // Chegou até aqui: firmware bom. Sem esta confirmação, o próximo reinício volta ao anterior.
-    if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) printf("firmware: confirmado\n");
+    // Made it this far: firmware is good. Without this confirmation, the next reboot rolls back.
+    if (esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) printf("firmware: confirmed\n");
 }

@@ -1,13 +1,13 @@
-// Interface do gravador. Lê o estado e pede ações pelo app.h.
+// Recorder user interface. Reads state and requests actions through app.h.
 #pragma once
 
-// Monta a interface. Chamar uma vez, depois de display_init().
+// Builds the interface. Call once, after display_init().
 void ui_init(void);
 
-// Captura da tela em BMP de 24 bits (480x800), para conferir a interface pelo navegador.
-// `screen` (opcional) abre antes uma tela pelo nome: inicio, gravacoes, ajustes, wifi,
+// Screen capture as a 24-bit BMP (480x800), to check the interface from the browser.
+// `screen` (optional) first opens a screen by name: inicio, gravacoes, ajustes, wifi,
 // navegador, rede-propria, hora, nome-rede-propria, senha-rede-propria, cartao.
-// Devolve memória de malloc em *bmp (liberar com free). false se a captura falhar.
+// Returns malloc'd memory in *bmp (release with free). false if the capture fails.
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

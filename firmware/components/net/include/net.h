@@ -1,5 +1,5 @@
-// Wi-Fi do gravador (ESP32-C6 via ESP-Hosted): redes salvas, varredura, conexão e hora.
-// Só redes de 2,4 GHz com senha comum ou abertas.
+// Recorder Wi-Fi (ESP32-C6 via ESP-Hosted): saved networks, scan, connection and time.
+// Only 2.4 GHz networks, with a plain password or open.
 #pragma once
 
 #include <stdbool.h>
@@ -19,21 +19,21 @@ typedef struct {
     bool saved;
 } net_ap_t;
 
-// Liga o rádio e tenta as redes salvas em segundo plano. Precisa do NVS já iniciado.
+// Turns on the radio and tries the saved networks in the background. Needs NVS already initialized.
 esp_err_t net_init(void);
 
 net_state_t net_state(void);
 
-// Rede em uso ou em tentativa; string vazia se nenhuma.
+// Network in use or being tried; empty string if none.
 void net_current_ssid(char out[33]);
 
-// Varredura em segundo plano. `net_scan_results` devolve o total (0 enquanto procura)
-// e põe em `done` se a varredura terminou.
+// Background scan. `net_scan_results` returns the total (0 while searching)
+// and sets `done` if the scan has finished.
 void net_scan_start(void);
 int net_scan_results(net_ap_t *out, int max, bool *done);
 
-// Conecta sem bloquear. `password` NULL usa a senha salva dessa rede.
-// A rede só é salva depois de conectar com sucesso.
+// Connects without blocking. NULL `password` uses the saved password for that network.
+// The network is saved only after a successful connection.
 esp_err_t net_connect(const char *ssid, const char *password);
 
 typedef struct {
@@ -47,10 +47,10 @@ typedef struct {
     uint8_t channel;
 } net_info_t;
 
-// Dados da conexão atual. false se não estiver conectado.
+// Current connection details. false if not connected.
 bool net_info(net_info_t *out);
 
-// Esquece uma rede salva e, se for a atual, desconecta.
+// Forgets a saved network and, if it is the current one, disconnects.
 void net_forget(const char *ssid);
 
 typedef struct {
@@ -58,59 +58,59 @@ typedef struct {
     char password[65];
 } net_saved_t;
 
-// Redes salvas, da preferida para a menos usada. Devolve quantas preencheu.
-// Funciona antes de net_init (só precisa do NVS).
+// Saved networks, from preferred to least used. Returns how many were filled.
+// Works before net_init (only needs NVS).
 int net_saved_list(net_saved_t *out, int max);
 
-// Substitui a lista inteira (até NET_MAX_SAVED, na ordem dada). Se a rede em uso sair
-// da lista, desconecta.
+// Replaces the whole list (up to NET_MAX_SAVED, in the given order). If the network in use
+// leaves the list, disconnects.
 void net_saved_set(const net_saved_t *list, int n);
 
-// Chamada sempre que a lista de redes salvas pode ter mudado (fora da tarefa da tela;
-// deve só marcar algo e voltar).
+// Called whenever the saved network list may have changed (outside the screen task;
+// it should only set a flag and return).
 void net_on_saved_changed(void (*cb)(void));
 
-// Depois de mostrar uma falha ao usuário: volta NET_FAILED para NET_IDLE.
+// After showing a failure to the user: moves NET_FAILED back to NET_IDLE.
 void net_ack_failure(void);
 
-// true depois que o relógio foi acertado pela internet.
+// true after the clock has been set from the internet.
 bool net_time_valid(void);
 
-// Acerta o relógio com uma hora vinda de fora (ex.: o navegador), só se a hora ainda não
-// veio do servidor NTP. true se acertou.
+// Sets the clock from an external time (e.g. the browser), only if the time has not
+// yet come from the NTP server. true if it was set.
 bool net_set_time_from(long long epoch_s);
 
-// Servidor de hora (NTP). Pode ser chamado antes de net_init; se a hora já estiver sendo
-// buscada, troca de servidor na hora.
+// Time server (NTP). May be called before net_init; if the time is already being
+// fetched, switches servers immediately.
 void net_set_ntp_server(const char *server);
 
-// Momento (time_t) da última vez que a hora veio do servidor; 0 se ainda não veio.
+// When (time_t) the time last came from the server; 0 if it has not yet.
 long long net_last_time_sync(void);
 
-// Rede própria do gravador (ponto de acesso). Ligada, o gravador sai da rede Wi-Fi em que
-// estava (sem varredura, sem conexão nem hora pela internet) e volta a ela quando desligada.
-// Pode ser chamado antes de net_init. `pass` com 8 a 63 caracteres (WPA2).
+// Recorder's own network (access point). When on, the recorder leaves the Wi-Fi network it
+// was on (no scan, no connection, no internet time) and returns to it when turned off.
+// May be called before net_init. `pass` with 8 to 63 characters (WPA2).
 void net_ap_set(bool on, const char *ssid, const char *pass);
 
 typedef struct {
-    bool on;          // pedida e no ar
-    char ip[16];      // endereço do gravador nesta rede
-    int clients;      // aparelhos conectados
+    bool on;          // requested and on the air
+    char ip[16];      // recorder's address on this network
+    int clients;      // connected devices
 } net_ap_info_t;
 
 void net_ap_info(net_ap_info_t *out);
 
-// ---------- Chip de Wi-Fi (ESP32-C6, ESP-Hosted) ----------
+// ---------- Wi-Fi chip (ESP32-C6, ESP-Hosted) ----------
 
-// Versão do firmware que está no C6 ("2.3.0"). false se o C6 não respondeu.
+// Version of the firmware on the C6 ("2.3.0"). false if the C6 did not respond.
 bool net_wifi_fw_version(char out[24]);
 
-// Versão do firmware do C6 que vem dentro deste firmware ("2.12.13").
+// Version of the C6 firmware bundled in this firmware ("2.12.13").
 const char *net_wifi_fw_bundled(void);
 
-// Começa a atualizar o C6 com o firmware embutido, em segundo plano. No fim o aparelho
-// reinicia. false se já houver uma atualização ou o C6 não estiver pronto.
+// Starts updating the C6 with the embedded firmware, in the background. At the end the device
+// restarts. false if an update is already running or the C6 is not ready.
 bool net_wifi_fw_update_start(void);
 
-// -1 parado; 0 a 100 enviando; -2 falhou (o C6 continua com a versão anterior).
+// -1 idle; 0 to 100 sending; -2 failed (the C6 keeps the previous version).
 int net_wifi_fw_update_progress(void);

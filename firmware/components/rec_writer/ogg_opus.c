@@ -2,8 +2,8 @@
 
 #include <string.h>
 
-#define PRE_SKIP 312 // atraso do codificador Opus (6,5 ms a 48 kHz)
-#define PACKETS_PER_PAGE 50 // ~1 s por página: pouca sobrecarga e perda pequena se a energia cair
+#define PRE_SKIP 312 // Opus encoder delay (6.5 ms at 48 kHz)
+#define PACKETS_PER_PAGE 50 // ~1 s per page: low overhead and small loss on power failure
 
 static uint32_t s_crc_table[256];
 
@@ -57,7 +57,7 @@ static int write_page(ogg_opus_t *o, uint8_t flags, uint64_t granule)
     return 0;
 }
 
-// Põe um pacote inteiro na página em montagem (tabela de segmentos de 255 em 255).
+// Puts a whole packet into the page being built (segment table in steps of 255).
 static int add_packet(ogg_opus_t *o, const uint8_t *pkt, size_t len)
 {
     int need = (int)(len / 255) + 1;
@@ -80,22 +80,22 @@ int ogg_opus_begin(ogg_opus_t *o, FILE *f, uint32_t input_rate, uint32_t serial)
 
     uint8_t head[19];
     memcpy(head, "OpusHead", 8);
-    head[8] = 1;  // versão
-    head[9] = 1;  // canais
+    head[8] = 1;  // version
+    head[9] = 1;  // channels
     head[10] = PRE_SKIP & 0xFF;
     head[11] = PRE_SKIP >> 8;
     put32(head + 12, input_rate);
-    head[16] = 0; // ganho de saída
+    head[16] = 0; // output gain
     head[17] = 0;
-    head[18] = 0; // mapeamento 0: mono/estéreo
-    if (add_packet(o, head, sizeof(head)) || write_page(o, 0x02, 0)) return -1; // início do fluxo
+    head[18] = 0; // mapping 0: mono/stereo
+    if (add_packet(o, head, sizeof(head)) || write_page(o, 0x02, 0)) return -1; // beginning of stream
 
     static const char vendor[] = "p4recorder";
     uint8_t tags[8 + 4 + sizeof(vendor) - 1 + 4];
     memcpy(tags, "OpusTags", 8);
     put32(tags + 8, sizeof(vendor) - 1);
     memcpy(tags + 12, vendor, sizeof(vendor) - 1);
-    put32(tags + 12 + sizeof(vendor) - 1, 0); // nenhum comentário
+    put32(tags + 12 + sizeof(vendor) - 1, 0); // no comments
     if (add_packet(o, tags, sizeof(tags)) || write_page(o, 0, 0)) return -1;
     return 0;
 }

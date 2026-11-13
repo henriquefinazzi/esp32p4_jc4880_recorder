@@ -1,6 +1,6 @@
-// microSD da Guition JC4880P443C: SDMMC de 4 bits, alimentado pelo LDO interno canal 4.
-// O cartão tem um dono por vez: o aparelho (montado em /sdcard) ou o computador,
-// quando ligado pela USB High-Speed, que o vê como pendrive.
+// microSD of the Guition JC4880P443C: 4-bit SDMMC, powered by internal LDO channel 4.
+// The card has one owner at a time: the device (mounted at /sdcard) or the computer,
+// when connected over High-Speed USB, which sees it as a USB drive.
 #pragma once
 
 #include <stdbool.h>
@@ -11,27 +11,27 @@
 
 #define STORAGE_MOUNT_POINT "/sdcard"
 
-// Inicializa o cartão, monta em /sdcard e liga o modo pendrive. Nunca formata.
+// Initializes the card, mounts it at /sdcard and enables USB drive mode. Never formats.
 esp_err_t storage_mount(void);
 
-// true quando o aparelho pode ler e escrever (cartão presente e não entregue ao computador).
+// true when the device can read and write (card present and not handed to the computer).
 bool storage_is_mounted(void);
 
-// true quando o cartão está entregue ao computador pela USB.
+// true when the card is handed to the computer over USB.
 bool storage_in_use_by_host(void);
 
-// Liga ou desliga a presença na USB. Desligar durante a gravação impede o computador
-// de tomar o cartão no meio de um arquivo.
+// Turns USB presence on or off. Turning it off while recording keeps the computer
+// from taking the card in the middle of a file.
 void storage_usb_enable(bool enable);
 
 
-// Espaço total e livre, em MB. false se o cartão não estiver com o aparelho.
+// Total and free space, in MB. false if the card is not with the device.
 bool storage_space_mb(uint32_t *total_mb, uint32_t *free_mb);
 
-// Cartão presente mas com sistema de arquivos que o aparelho não lê (exFAT, NTFS...).
-// Nunca é formatado sozinho: só por storage_format(), depois de o usuário confirmar.
+// Card present but with a file system the device cannot read (exFAT, NTFS...).
+// Never formatted on its own: only via storage_format(), after the user confirms.
 bool storage_unreadable(void);
 
-// Formata o cartão em FAT (apaga tudo) e o monta. Vale para o cartão no aparelho e para o
-// cartão não reconhecido.
+// Formats the card as FAT (erases everything) and mounts it. Works for the card in the device
+// and for an unrecognized card.
 esp_err_t storage_format(void);

@@ -20,7 +20,7 @@
 #define PIN_BACKLIGHT 23
 #define PIN_TOUCH_RST 3
 
-// Luz de fundo em PWM. 20 kHz fica acima do audível, para não aparecer na gravação.
+// PWM backlight. 20 kHz is above the audible range, so it does not show up in recordings.
 #define BL_FREQ_HZ 20000
 #define BL_DUTY_BITS LEDC_TIMER_10_BIT
 #define BL_DUTY_MAX ((1 << 10) - 1)
@@ -44,7 +44,7 @@ static esp_err_t panel_init(void)
 {
     esp_ldo_channel_handle_t ldo = NULL;
     esp_ldo_channel_config_t ldo_cfg = {.chan_id = DSI_LDO_CHANNEL, .voltage_mv = DSI_LDO_MV};
-    ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &ldo), TAG, "LDO do DSI");
+    ESP_RETURN_ON_ERROR(esp_ldo_acquire_channel(&ldo_cfg, &ldo), TAG, "DSI LDO");
 
     esp_lcd_dsi_bus_handle_t bus = NULL;
     esp_lcd_dsi_bus_config_t bus_cfg = {
@@ -53,10 +53,10 @@ static esp_err_t panel_init(void)
         .phy_clk_src = MIPI_DSI_PHY_CLK_SRC_DEFAULT,
         .lane_bit_rate_mbps = DSI_LANE_MBPS,
     };
-    ESP_RETURN_ON_ERROR(esp_lcd_new_dsi_bus(&bus_cfg, &bus), TAG, "barramento DSI");
+    ESP_RETURN_ON_ERROR(esp_lcd_new_dsi_bus(&bus_cfg, &bus), TAG, "DSI bus");
 
     esp_lcd_dbi_io_config_t dbi_cfg = {.virtual_channel = 0, .lcd_cmd_bits = 8, .lcd_param_bits = 8};
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_dbi(bus, &dbi_cfg, &s_dbi_io), TAG, "canal de comandos");
+    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_dbi(bus, &dbi_cfg, &s_dbi_io), TAG, "command channel");
 
     esp_lcd_dpi_panel_config_t dpi_cfg = {
         .virtual_channel = 0,
@@ -77,9 +77,9 @@ static esp_err_t panel_init(void)
         },
         .flags.use_dma2d = 1,
     };
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_dpi(bus, &dpi_cfg, &s_panel), TAG, "painel DPI");
+    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_dpi(bus, &dpi_cfg, &s_panel), TAG, "DPI panel");
 
-    // Reset do painel depois do DPI e antes da sequência de comandos.
+    // Panel reset after DPI and before the command sequence.
     gpio_config_t rst = {.pin_bit_mask = 1ULL << PIN_LCD_RST, .mode = GPIO_MODE_OUTPUT};
     gpio_config(&rst);
     gpio_set_level(PIN_LCD_RST, 0);
@@ -90,10 +90,10 @@ static esp_err_t panel_init(void)
     for (size_t i = 0; i < BOARD_P4_PANEL_INIT_CMDS_SIZE; i++) {
         const board_p4_panel_init_cmd_t *c = &board_p4_panel_init_cmds[i];
         ESP_RETURN_ON_ERROR(esp_lcd_panel_io_tx_param(s_dbi_io, c->cmd, c->data, c->len), TAG,
-                            "comando 0x%02X", c->cmd);
+                            "command 0x%02X", c->cmd);
         if (c->delay_ms) vTaskDelay(pdMS_TO_TICKS(c->delay_ms));
     }
-    ESP_RETURN_ON_ERROR(esp_lcd_panel_init(s_panel), TAG, "init do painel");
+    ESP_RETURN_ON_ERROR(esp_lcd_panel_init(s_panel), TAG, "panel init");
     return ESP_OK;
 }
 
@@ -117,19 +117,19 @@ static esp_err_t touch_init(esp_lcd_touch_handle_t *out)
     } else {
         return ESP_ERR_NOT_FOUND;
     }
-    ESP_LOGI(TAG, "GT911 em 0x%02X", addr);
+    ESP_LOGI(TAG, "GT911 at 0x%02X", addr);
 
     esp_lcd_panel_io_handle_t io = NULL;
     esp_lcd_panel_io_i2c_config_t io_cfg = ESP_LCD_TOUCH_IO_I2C_GT911_CONFIG();
     io_cfg.dev_addr = addr;
     io_cfg.scl_speed_hz = 400000;
-    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(i2c, &io_cfg, &io), TAG, "io do toque");
+    ESP_RETURN_ON_ERROR(esp_lcd_new_panel_io_i2c(i2c, &io_cfg, &io), TAG, "touch io");
 
     esp_lcd_touch_config_t cfg = {
         .x_max = DISPLAY_H_RES,
         .y_max = DISPLAY_V_RES,
-        .rst_gpio_num = -1, // já resetado acima
-        .int_gpio_num = -1, // leitura por consulta
+        .rst_gpio_num = -1, // already reset above
+        .int_gpio_num = -1, // polled reads
     };
     return esp_lcd_touch_new_i2c_gt911(io, &cfg, out);
 }
@@ -143,7 +143,7 @@ esp_err_t display_init(void)
         .freq_hz = BL_FREQ_HZ,
         .clk_cfg = LEDC_AUTO_CLK,
     };
-    ESP_RETURN_ON_ERROR(ledc_timer_config(&bl_timer), TAG, "pwm da luz de fundo");
+    ESP_RETURN_ON_ERROR(ledc_timer_config(&bl_timer), TAG, "backlight pwm");
     const ledc_channel_config_t bl_channel = {
         .gpio_num = PIN_BACKLIGHT,
         .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -151,13 +151,13 @@ esp_err_t display_init(void)
         .timer_sel = LEDC_TIMER_0,
         .duty = 0,
     };
-    ESP_RETURN_ON_ERROR(ledc_channel_config(&bl_channel), TAG, "canal da luz de fundo");
+    ESP_RETURN_ON_ERROR(ledc_channel_config(&bl_channel), TAG, "backlight channel");
     s_bl_ready = true;
 
-    ESP_RETURN_ON_ERROR(panel_init(), TAG, "painel");
+    ESP_RETURN_ON_ERROR(panel_init(), TAG, "panel");
 
     lvgl_port_cfg_t port_cfg = ESP_LVGL_PORT_INIT_CONFIG();
-    port_cfg.task_stack = 32 * 1024; // a renderização de fontes TTF usa bastante pilha
+    port_cfg.task_stack = 32 * 1024; // TTF font rendering uses a lot of stack
     ESP_RETURN_ON_ERROR(lvgl_port_init(&port_cfg), TAG, "lvgl");
 
     const lvgl_port_display_cfg_t disp_cfg = {
@@ -172,15 +172,15 @@ esp_err_t display_init(void)
     };
     const lvgl_port_display_dsi_cfg_t dsi_cfg = {.flags = {.avoid_tearing = false}};
     s_disp = lvgl_port_add_disp_dsi(&disp_cfg, &dsi_cfg);
-    ESP_RETURN_ON_FALSE(s_disp, ESP_FAIL, TAG, "display no lvgl");
+    ESP_RETURN_ON_FALSE(s_disp, ESP_FAIL, TAG, "lvgl display");
 
     esp_lcd_touch_handle_t touch = NULL;
     esp_err_t err = touch_init(&touch);
     if (err == ESP_OK) {
         const lvgl_port_touch_cfg_t touch_cfg = {.disp = s_disp, .handle = touch};
-        if (!lvgl_port_add_touch(&touch_cfg)) ESP_LOGW(TAG, "toque nao registrado no lvgl");
+        if (!lvgl_port_add_touch(&touch_cfg)) ESP_LOGW(TAG, "touch not registered in lvgl");
     } else {
-        ESP_LOGW(TAG, "toque indisponivel (%s)", esp_err_to_name(err));
+        ESP_LOGW(TAG, "touch unavailable (%s)", esp_err_to_name(err));
     }
 
     display_backlight(true);

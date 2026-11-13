@@ -1,8 +1,8 @@
 /*
- * Sequência de inicialização do ST7701S da Guition JC4880P443 (480x800 MIPI-DSI).
- * Origem: guition-jc4880p4-bsp (MIT, Copyright (c) 2026 ultramcu),
- * https://github.com/ultramcu/guition-jc4880p4-bsp — verificada em hardware lá.
- * Termina com SLPOUT (0x11) e DISPON (0x29); não repetir em outro lugar.
+ * ST7701S init sequence for the Guition JC4880P443 (480x800 MIPI-DSI).
+ * Source: guition-jc4880p4-bsp (MIT, Copyright (c) 2026 ultramcu),
+ * https://github.com/ultramcu/guition-jc4880p4-bsp — verified on hardware there.
+ * Ends with SLPOUT (0x11) and DISPON (0x29); do not repeat them elsewhere.
  */
 #pragma once
 

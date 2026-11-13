@@ -1,5 +1,5 @@
 dependencies:
-  # Série 2.12: a mesma que o repositório ultramcu documenta para o C6 desta placa.
+  # 2.12 series: the same one the ultramcu repository documents for this board's C6.
   espressif/esp_hosted: "~2.12.0"
   espressif/esp_wifi_remote: "*"
   idf: ">=5.3"

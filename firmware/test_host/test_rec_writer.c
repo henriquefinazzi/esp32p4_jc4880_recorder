@@ -1,4 +1,4 @@
-// Grava 5 s de tom com ruído nos três formatos; check_rec_files.sh confere com ffprobe.
+// Records 5 s of tone with noise in all three formats; check_rec_files.sh checks them with ffprobe.
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +11,7 @@ static int failures;
 #define CHECK(c)                                                    \
     do {                                                            \
         if (!(c)) {                                                 \
-            printf("FALHOU %s:%d: %s\n", __FILE__, __LINE__, #c);   \
+            printf("FAILED %s:%d: %s\n", __FILE__, __LINE__, #c);   \
             failures++;                                             \
         }                                                           \
     } while (0)
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
         CHECK(w != NULL);
         if (!w) continue;
         unsigned t = 0;
-        for (int b = 0; b < (int)(5 * rate / 256); b++) { // blocos de 256: não casam com os quadros
+        for (int b = 0; b < (int)(5 * rate / 256); b++) { // blocks of 256: do not match the frames
             for (int i = 0; i < 256; i++, t++) {
                 block[i] = (int16_t)(8000 * sin(2 * M_PI * 440 * t / rate) + (rand() % 400 - 200));
             }
@@ -41,14 +41,14 @@ int main(int argc, char **argv)
         uint64_t bytes = rec_writer_bytes(w);
         CHECK(rec_writer_close(w) == 0);
         uint32_t est = rec_seconds_from_size((rec_format_t)f, rate, bytes);
-        printf("%s: %llu bytes, %u s estimados\n", path, (unsigned long long)bytes, est);
+        printf("%s: %llu bytes, %u s estimated\n", path, (unsigned long long)bytes, est);
         CHECK(est >= 4 && est <= 6);
         CHECK(rec_format_from_name(path) == f);
     }
     CHECK(rec_format_from_name("REC_0001 nome.opus") == REC_FMT_OPUS);
     CHECK(rec_format_from_name("REC_0001.txt") == -1);
     if (failures) {
-        printf("%d falha(s)\n", failures);
+        printf("%d failure(s)\n", failures);
         return 1;
     }
     printf("rec_writer: ok\n");

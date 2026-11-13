@@ -1,4 +1,4 @@
-// Implementação do opus_shim com a libopus do computador, só para os testes.
+// opus_shim implementation using the computer's libopus, for the tests only.
 #include <opus/opus.h>
 #include <stdlib.h>
 

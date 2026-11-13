@@ -1,9 +1,9 @@
-// Textos da interface em vários idiomas.
-// Cada idioma é um arquivo JSON plano de chave -> texto, com "_codigo" e "_nome":
+// UI texts in several languages.
+// Each language is a flat JSON file of key -> text, with "_codigo" (code) and "_nome" (name):
 //   { "_codigo": "en", "_nome": "English", "home.ready": "Ready to record", ... }
-// Português (pt) e inglês (en) vêm embutidos no firmware (firmware/lang/*.json).
-// Outros idiomas: um arquivo <codigo>.json na pasta LANGUAGES do cartão.
-// Texto que faltar no idioma escolhido sai em inglês; se faltar também, sai a chave.
+// Portuguese (pt) and English (en) are embedded in the firmware (firmware/lang/*.json).
+// Other languages: a <code>.json file in the card's LANGUAGES folder.
+// Text missing in the chosen language falls back to English; if missing there too, the key.
 #pragma once
 
 #include <stdbool.h>
@@ -19,25 +19,25 @@ typedef struct {
     bool builtin;
 } i18n_lang_t;
 
-// Carrega o português (base) e o idioma `code` (cai no português se não achar).
+// Loads English (base) and language `code` (falls back to English if not found).
 void i18n_init(const char *code);
 
-// Troca de idioma. false se não achar ou o arquivo tiver erro (continua no atual).
-// Chamar só da tarefa da tela. T() pode ser chamado de qualquer tarefa.
+// Switches language. false if not found or the file has an error (keeps the current one).
+// Call only from the screen task. T() may be called from any task.
 bool i18n_set(const char *code);
 
-// Código do idioma em uso.
+// Code of the language in use.
 const char *i18n_current(void);
 
-// Texto da chave no idioma atual.
+// Text for the key in the current language.
 const char *T(const char *key);
 
-// Textos do idioma atual cujas chaves começam com um dos prefixos, como objeto JSON
-// (para a página web). malloc; liberar com free. As chaves vêm do português (base).
+// Texts of the current language whose keys start with one of the prefixes, as a JSON object
+// (for the web page). malloc'd; release with free. Keys come from English (base).
 char *i18n_export(const char *const *prefixes, int n);
 
-// Idiomas disponíveis: embutidos e os do cartão. Devolve quantos preencheu.
+// Available languages: embedded and those on the card. Returns how many were filled.
 int i18n_list(i18n_lang_t *out, int max);
 
-// Lê o "_codigo" e o "_nome" de um texto JSON de idioma (para testes e listagem).
+// Reads "_codigo" and "_nome" from a language JSON text (for tests and listing).
 bool i18n_parse_header(const char *json, char code[I18N_CODE_MAX + 1], char name[I18N_NAME_MAX + 1]);

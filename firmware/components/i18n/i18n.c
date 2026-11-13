@@ -16,21 +16,21 @@ extern const char en_json_start[] asm("_binary_en_json_start");
 
 static const char *TAG = "i18n";
 
-// Tabela de um idioma: pares chave/texto ordenados pela chave (busca binária).
+// One language's table: key/text pairs sorted by key (binary search).
 typedef struct {
     char code[I18N_CODE_MAX + 1];
     int count;
     const char **keys;
     const char **values;
-    char *pool; // todas as strings num bloco só
+    char *pool; // all strings in a single block
 } table_t;
 
-// Idiomas já carregados ficam na memória (nunca são liberados): o servidor web lê textos
-// em outra tarefa, e trocar de idioma só troca o ponteiro s_cur.
-static table_t s_base;                     // inglês, sempre carregado (reserva)
-static table_t s_cache[I18N_MAX_LANGS];    // outros idiomas carregados
+// Loaded languages stay in memory (never freed): the web server reads texts
+// from another task, and switching language only swaps the s_cur pointer.
+static table_t s_base;                     // English, always loaded (fallback)
+static table_t s_cache[I18N_MAX_LANGS];    // other loaded languages
 static int s_cached;
-static const table_t *volatile s_cur;      // NULL: inglês
+static const table_t *volatile s_cur;      // NULL: English
 static char s_code[I18N_CODE_MAX + 1] = "en";
 
 static void table_free(table_t *t)
@@ -119,7 +119,7 @@ static const char *table_get(const table_t *t, const char *key)
     return NULL;
 }
 
-// Texto JSON de um idioma: embutido ou do cartão (malloc; liberar). NULL se não achar.
+// A language's JSON text: embedded or from the card (malloc'd; free it). NULL if not found.
 static char *source_for(const char *code, bool *builtin)
 {
     *builtin = true;
@@ -173,10 +173,10 @@ bool i18n_set(const char *code)
     bool ok = table_load(&t, json);
     free(json);
     if (!ok) {
-        ESP_LOGW(TAG, "%s.json com erro", code);
+        ESP_LOGW(TAG, "%s.json has errors", code);
         return false;
     }
-    snprintf(t.code, sizeof(t.code), "%s", code); // o código vale pelo nome do arquivo
+    snprintf(t.code, sizeof(t.code), "%s", code); // the code comes from the file name
     s_cache[s_cached] = t;
     s_cur = &s_cache[s_cached++];
     snprintf(s_code, sizeof(s_code), "%s", code);

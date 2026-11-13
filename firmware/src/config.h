@@ -1,29 +1,29 @@
-// Espelho das configurações no cartão: /sdcard/CONFIG.JSON.
-// A memória interna (NVS) continua sendo a fonte: sem cartão o aparelho liga configurado.
-// - Toda mudança feita no aparelho regrava o arquivo (com um pequeno atraso).
-// - Sempre que o cartão volta para o aparelho (ao ligar ou depois do modo pendrive), o
-//   arquivo é lido: valores válidos que mudaram são aplicados; os inválidos são ignorados.
-// - Arquivo com erro de sintaxe fica intocado até a próxima mudança feita no aparelho.
+// Mirror of the settings on the card: /sdcard/CONFIG.JSON.
+// Internal memory (NVS) remains the source: without a card the device boots configured.
+// - Every change made on the device rewrites the file (after a short delay).
+// - Whenever the card returns to the device (at boot or after USB drive mode), the
+//   file is read: valid values that changed are applied; invalid ones are ignored.
+// - A file with a syntax error is left untouched until the next change made on the device.
 #pragma once
 
 #include <stdbool.h>
 #include <stddef.h>
 
-// Depois do cartão, do áudio e da tela, antes do Wi-Fi e do servidor web.
+// After the card, audio and display; before Wi-Fi and the web server.
 void config_init(void);
 
-// Avisa que alguma configuração mudou no aparelho.
+// Signals that some setting changed on the device.
 void config_changed(void);
 
-// Tipo de aviso sobre o arquivo lido; a tela monta o texto no idioma escolhido.
+// Kind of notice about the file read; the screen builds the text in the chosen language.
 typedef enum {
     CONFIG_NOTICE_NONE,
-    CONFIG_NOTICE_APPLIED,         // mudanças aplicadas
-    CONFIG_NOTICE_APPLIED_IGNORED, // mudanças aplicadas, com valores inválidos ignorados
-    CONFIG_NOTICE_IGNORED,         // nada mudou; só valores inválidos ignorados
-    CONFIG_NOTICE_UNREADABLE,      // arquivo com erro de sintaxe, ignorado inteiro
+    CONFIG_NOTICE_APPLIED,         // changes applied
+    CONFIG_NOTICE_APPLIED_IGNORED, // changes applied, with invalid values ignored
+    CONFIG_NOTICE_IGNORED,         // nothing changed; only invalid values ignored
+    CONFIG_NOTICE_UNREADABLE,      // file with a syntax error, ignored entirely
 } config_notice_t;
 
-// Aviso pendente para a tela (arquivo aplicado ou com erro) e quantos valores foram
-// ignorados. false se não houver.
+// Pending notice for the screen (file applied or with errors) and how many values were
+// ignored. false if there is none.
 bool config_take_notice(config_notice_t *kind, int *ignored);

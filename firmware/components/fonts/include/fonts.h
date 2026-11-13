@@ -1,4 +1,4 @@
-// Fontes Montserrat embutidas (TTF), com acentos do português.
+// Embedded Montserrat fonts (TTF), with Portuguese accents.
 #pragma once
 
 #include <stddef.h>

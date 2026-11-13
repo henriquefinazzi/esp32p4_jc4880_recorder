@@ -1,8 +1,8 @@
 # Name,   Type, SubType, Offset,   Size,     Flags
-# nvs e phy_init no mesmo lugar de antes: as configurações salvas sobrevivem à troca.
+# nvs and phy_init in the same place as before: saved settings survive the change.
 nvs,      data, nvs,     0x9000,   0x6000,
 phy_init, data, phy,     0xf000,   0x1000,
-# Duas cópias do firmware: uma roda enquanto a outra recebe a atualização pelo Wi-Fi.
+# Two firmware copies: one runs while the other receives the Wi-Fi update.
 ota_0,    app,  ota_0,   0x10000,  0x600000,
 ota_1,    app,  ota_1,   0x610000, 0x600000,
 otadata,  data, ota,     0xC10000, 0x2000,

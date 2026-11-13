@@ -1,6 +1,6 @@
-// Servidor web do gravador: lista, toca, baixa e apaga gravações pela rede local.
-// Tudo exige o usuário e a senha mostrados no aparelho (HTTP Basic).
-// É HTTP simples: a senha protege de curiosos na mesma rede, não de quem capture o tráfego.
+// Recorder web server: lists, plays, downloads and deletes recordings over the local network.
+// Everything requires the username and password shown on the device (HTTP Basic).
+// It's plain HTTP: the password keeps out the curious on the same network, not traffic sniffers.
 #include "web.h"
 
 #include <stdio.h>
@@ -37,15 +37,15 @@
 static const char *TAG = "web";
 
 static httpd_handle_t s_server;
-// Valor esperado do cabeçalho Authorization. Dois buffers: a tela troca a senha enquanto o
-// servidor pode estar conferindo uma requisição, então a troca é só do índice.
+// Expected Authorization header value. Two buffers: the screen changes the password while the
+// server may be checking a request, so only the index is swapped.
 static char s_auth[2][128];
 static volatile int s_auth_idx;
 
 static const char PAGE[] =
     "<!doctype html><html lang=en><meta charset=utf-8>"
     "<meta name=viewport content='width=device-width,initial-scale=1'>"
-    "<title>Gravador</title><style>"
+    "<title>P4 Recorder</title><style>"
     ":root{color-scheme:dark}*{box-sizing:border-box}"
     "body{margin:0;background:#0f1317;color:#e8ecef;font:16px system-ui,sans-serif}"
     "main{max-width:760px;margin:0 auto;padding:20px 16px 120px}"
@@ -115,10 +115,10 @@ static const char PAGE[] =
     "x.onerror=()=>{m.textContent=t('web.conn_lost')};m.textContent=t('web.sending','0%');x.send(f)};"
     "load();setInterval(load,5000);</script></html>";
 
-// ---------- Auxiliares ----------
+// ---------- Helpers ----------
 
-// Bloqueio após senhas erradas, por endereço de quem tenta: LOGIN_MAX_FAILS erros seguidos
-// travam aquele endereço por LOGIN_LOCK_S. Pedido sem senha (o primeiro do navegador) não conta.
+// Lockout after wrong passwords, per client address: LOGIN_MAX_FAILS consecutive failures
+// lock that address for LOGIN_LOCK_S. A request without a password (the browser's first) doesn't count.
 #define LOGIN_MAX_FAILS 5
 #define LOGIN_LOCK_S 300
 #define LOGIN_SLOTS 8
@@ -139,10 +139,10 @@ static uint32_t peer_ip(httpd_req_t *req)
     socklen_t len = sizeof(addr);
     if (getpeername(httpd_req_to_sockfd(req), (struct sockaddr *)&addr, &len) != 0) return 0;
     if (addr.sin6_family == AF_INET) return ((struct sockaddr_in *)&addr)->sin_addr.s_addr;
-    return addr.sin6_addr.un.u32_addr[3]; // IPv4 mapeado ou fim do IPv6
+    return addr.sin6_addr.un.u32_addr[3]; // mapped IPv4 or tail of the IPv6
 }
 
-// Vaga do endereço (ou a menos usada). Chamar com s_login_mux preso.
+// Slot for the address (or the least used one). Call with s_login_mux held.
 static login_slot_t *login_slot(uint32_t ip)
 {
     login_slot_t *oldest = &s_login[0];
@@ -186,7 +186,7 @@ static bool authorized(httpd_req_t *req)
             slot->locked_until_us = now + (int64_t)LOGIN_LOCK_S * 1000000;
         }
         portEXIT_CRITICAL(&s_login_mux);
-        if (!ok) ESP_LOGW(TAG, "senha errada de " IPSTR, IP2STR((esp_ip4_addr_t *)&ip));
+        if (!ok) ESP_LOGW(TAG, "wrong password from " IPSTR, IP2STR((esp_ip4_addr_t *)&ip));
     }
     if (ok) return true;
     httpd_resp_set_status(req, "401 Unauthorized");
@@ -196,8 +196,8 @@ static bool authorized(httpd_req_t *req)
     return false;
 }
 
-// As rotas identificam a gravação pelo número: "/rec/23". Nada do pedido vira caminho
-// de arquivo, então não há como sair da pasta das gravações.
+// Routes identify the recording by number: "/rec/23". Nothing from the request becomes a file
+// path, so there is no way to escape the recordings folder.
 static bool id_from_uri(const char *uri, int *id)
 {
     const char *p = uri + strlen("/rec/");
@@ -212,7 +212,7 @@ static bool id_from_uri(const char *uri, int *id)
     return true;
 }
 
-// Nome de arquivo para o cabeçalho de download, com acentos (RFC 5987).
+// File name for the download header, with accented characters (RFC 5987).
 static void percent_encode(const char *in, char *out, size_t out_len)
 {
     static const char hex[] = "0123456789ABCDEF";
@@ -242,7 +242,7 @@ static const char *card_problem(const app_status_t *st)
     return st->card_on_host ? T("web.err.card_host") : st->card_unreadable ? T("web.err.card_unreadable") : T("web.err.no_card");
 }
 
-// ---------- Rotas ----------
+// ---------- Routes ----------
 
 static esp_err_t page_handler(httpd_req_t *req)
 {
@@ -271,21 +271,21 @@ static esp_err_t status_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, json);
 }
 
-// ---------- Atualização de firmware ----------
-// POST /api/firmware com o .bin no corpo (o mesmo firmware.bin que a gravação pela USB usa).
-// Grava na outra partição, confere a imagem e reinicia nela. Se o firmware novo não
-// confirmar que subiu (fim do app_main), o reinício seguinte volta ao anterior.
+// ---------- Firmware update ----------
+// POST /api/firmware with the .bin in the body (the same firmware.bin used for USB flashing).
+// Writes to the other partition, verifies the image and reboots into it. If the new firmware
+// doesn't confirm it booted (end of app_main), the next reboot rolls back to the previous one.
 
 #define OTA_CHUNK 4096
 #define OTA_HEADER_BYTES (sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t))
 
 static void restart_task(void *arg)
 {
-    vTaskDelay(pdMS_TO_TICKS(1500)); // deixa a resposta chegar ao navegador
+    vTaskDelay(pdMS_TO_TICKS(1500)); // let the response reach the browser
     esp_restart();
 }
 
-// Confere o começo do arquivo: imagem de app válida e do mesmo projeto que está rodando.
+// Checks the start of the file: a valid app image from the same project that is running.
 static const char *check_header(const uint8_t *buf)
 {
     const esp_image_header_t *img = (const esp_image_header_t *)buf;
@@ -299,7 +299,7 @@ static const char *check_header(const uint8_t *buf)
     return NULL;
 }
 
-// Funções de desenvolvedor desligadas no aparelho: o endereço não faz nada.
+// Developer features turned off on the device: the endpoint does nothing.
 static bool dev_allowed(httpd_req_t *req)
 {
     if (app_dev_enabled()) return true;
@@ -325,7 +325,7 @@ static esp_err_t firmware_handler(httpd_req_t *req)
     uint8_t *buf = heap_caps_malloc(OTA_CHUNK, MALLOC_CAP_SPIRAM);
     if (!buf) return fail(req, "500 Internal Server Error", T("web.err.no_memory"));
     app_set_updating(true);
-    ESP_LOGI(TAG, "firmware: recebendo %u bytes para %s", (unsigned)req->content_len, part->label);
+    ESP_LOGI(TAG, "firmware: receiving %u bytes for %s", (unsigned)req->content_len, part->label);
 
     esp_ota_handle_t ota = 0;
     bool begun = false;
@@ -345,7 +345,7 @@ static esp_err_t firmware_handler(httpd_req_t *req)
         got += n;
         filled += n;
         if (!begun) {
-            if (filled < OTA_HEADER_BYTES && got < req->content_len) continue; // junta o cabeçalho
+            if (filled < OTA_HEADER_BYTES && got < req->content_len) continue; // gather the header
             problem = check_header(buf);
             if (problem) break;
             if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &ota) != ESP_OK) {
@@ -371,15 +371,15 @@ static esp_err_t firmware_handler(httpd_req_t *req)
         ESP_LOGW(TAG, "firmware: %s", problem);
         return fail(req, "400 Bad Request", problem);
     }
-    ESP_LOGI(TAG, "firmware: gravado em %s, reiniciando", part->label);
+    ESP_LOGI(TAG, "firmware: written to %s, restarting", part->label);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_sendstr(req, "{\"ok\":true}");
-    xTaskCreate(restart_task, "reinicio", 2048, NULL, 5, NULL);
+    xTaskCreate(restart_task, "restart", 2048, NULL, 5, NULL);
     return ESP_OK;
 }
 
-// POST /api/time com os segundos desde 1970 (hora do navegador): acerta o relógio quando
-// não há hora da internet, como na rede própria. Assim as gravações saem com a data certa.
+// POST /api/time with seconds since 1970 (browser time): sets the clock when there is
+// no internet time, as on the own network. This way recordings get the right date.
 static esp_err_t time_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -392,7 +392,7 @@ static esp_err_t time_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, set ? "{\"set\":true}" : "{\"set\":false}");
 }
 
-// Textos da página no idioma do aparelho.
+// Page texts in the device language.
 static esp_err_t lang_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -406,7 +406,7 @@ static esp_err_t lang_handler(httpd_req_t *req)
     return err;
 }
 
-// Imagem da tela (BMP). ?tela=<nome> abre uma tela antes (ver ui_capture_bmp).
+// Screen image (BMP). ?tela=<name> opens a screen first (see ui_capture_bmp).
 static esp_err_t screen_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -428,7 +428,7 @@ static esp_err_t screen_handler(httpd_req_t *req)
     return err;
 }
 
-// Registro recente do aparelho (texto), para diagnóstico sem a USB do console.
+// Recent device log (text), for diagnostics without the console USB.
 static esp_err_t log_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -446,7 +446,7 @@ static esp_err_t log_handler(httpd_req_t *req)
 static esp_err_t list_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
-    static app_recording_t recs[MAX_RECORDINGS]; // o servidor atende um pedido por vez
+    static app_recording_t recs[MAX_RECORDINGS]; // the server handles one request at a time
     app_status_t st;
     app_get_status(&st);
     int n = app_list_recordings(recs, MAX_RECORDINGS);
@@ -456,9 +456,9 @@ static esp_err_t list_handler(httpd_req_t *req)
     httpd_resp_sendstr_chunk(req, "[");
     bool first = true;
     for (int i = 0; i < n; i++) {
-        // A gravação em curso ainda está sendo escrita: fica fora da lista.
+        // The recording in progress is still being written: leave it out of the list.
         if (st.recording && strncmp(recs[i].file, st.rec_name, 8) == 0) continue;
-        // Nome e arquivo nunca têm aspas nem barra invertida (o nome é limpo ao salvar).
+        // Name and file never contain quotes or backslashes (the name is cleaned when saved).
         char item[320];
         snprintf(item, sizeof(item), "%s{\"id\":%d,\"file\":\"%s\",\"title\":\"%s\",\"bytes\":%lu,\"seconds\":%lu,\"mtime\":%lld}",
                  first ? "" : ",", recs[i].id, recs[i].file, recs[i].title, (unsigned long)recs[i].bytes,
@@ -470,8 +470,8 @@ static esp_err_t list_handler(httpd_req_t *req)
     return httpd_resp_sendstr_chunk(req, NULL);
 }
 
-// Envia o arquivo com Content-Length e suporte a Range, que o player do navegador
-// usa para saber a duração e para pular para um ponto da gravação.
+// Sends the file with Content-Length and Range support, which the browser player
+// uses to learn the duration and to seek to a point in the recording.
 static esp_err_t file_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -485,7 +485,7 @@ static esp_err_t file_handler(httpd_req_t *req)
 
     char path[128];
     if (!app_recording_path(id, path, sizeof(path))) return fail(req, "404 Not Found", T("web.err.not_found"));
-    const char *name = path + sizeof(STORAGE_MOUNT_POINT); // depois de "/sdcard/"
+    const char *name = path + sizeof(STORAGE_MOUNT_POINT); // after "/sdcard/"
     struct stat info;
     if (stat(path, &info) != 0) return fail(req, "404 Not Found", T("web.err.not_found"));
     long total = (long)info.st_size;
@@ -497,7 +497,7 @@ static esp_err_t file_handler(httpd_req_t *req)
         const char *spec = range + 6;
         char *dash = strchr(spec, '-');
         if (dash) {
-            if (dash == spec) { // "bytes=-N": os últimos N bytes
+            if (dash == spec) { // "bytes=-N": the last N bytes
                 long suffix = atol(dash + 1);
                 if (suffix > 0) start = total > suffix ? total - suffix : 0;
             } else {
@@ -557,7 +557,7 @@ static esp_err_t file_handler(httpd_req_t *req)
             while (sent < got) {
                 int w = httpd_send(req, (const char *)buf + sent, got - sent);
                 if (w <= 0) {
-                    result = ESP_FAIL; // o navegador fechou a conexão (normal ao pular no áudio)
+                    result = ESP_FAIL; // the browser closed the connection (normal when seeking in the audio)
                     break;
                 }
                 sent += (size_t)w;
@@ -565,7 +565,7 @@ static esp_err_t file_handler(httpd_req_t *req)
             if (result != ESP_OK) break;
             left -= (long)got;
         }
-        if (left > 0) result = ESP_FAIL; // resposta incompleta: a conexão tem de ser fechada
+        if (left > 0) result = ESP_FAIL; // incomplete response: the connection must be closed
     }
     free(buf);
     fclose(f);
@@ -586,7 +586,7 @@ static esp_err_t delete_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, "{\"ok\":true}");
 }
 
-// PUT /rec/<número> com o novo nome no corpo (texto UTF-8; vazio remove o nome).
+// PUT /rec/<number> with the new name in the body (UTF-8 text; empty removes the name).
 static esp_err_t rename_handler(httpd_req_t *req)
 {
     if (!authorized(req)) return ESP_OK;
@@ -611,7 +611,7 @@ static esp_err_t rename_handler(httpd_req_t *req)
     return httpd_resp_sendstr(req, "{\"ok\":true}");
 }
 
-// ---------- Inicialização ----------
+// ---------- Initialization ----------
 
 void web_stop(void)
 {
@@ -648,7 +648,7 @@ esp_err_t web_start(const char *user, const char *pass, const char *hostname)
     httpd_config_t cfg = HTTPD_DEFAULT_CONFIG();
     cfg.stack_size = 8192;
     cfg.uri_match_fn = httpd_uri_match_wildcard;
-    cfg.lru_purge_enable = true; // navegadores abrem várias conexões; recicla as mais antigas
+    cfg.lru_purge_enable = true; // browsers open several connections; recycle the oldest ones
     cfg.max_uri_handlers = 14;
     esp_err_t err = httpd_start(&s_server, &cfg);
     if (err != ESP_OK) return err;
@@ -668,13 +668,13 @@ esp_err_t web_start(const char *user, const char *pass, const char *hostname)
     };
     for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); i++) httpd_register_uri_handler(s_server, &routes[i]);
 
-    // http://<hostname>.local na rede local.
+    // http://<hostname>.local on the local network.
     if (mdns_init() == ESP_OK) {
         mdns_hostname_set(hostname);
         mdns_instance_name_set("P4 Recorder");
         mdns_service_add(NULL, "_http", "_tcp", 80, NULL, 0);
     } else {
-        ESP_LOGW(TAG, "mDNS indisponivel; use o endereco IP");
+        ESP_LOGW(TAG, "mDNS unavailable; use the IP address");
     }
     return ESP_OK;
 }

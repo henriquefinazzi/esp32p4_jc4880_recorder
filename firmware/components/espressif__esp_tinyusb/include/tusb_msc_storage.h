@@ -188,8 +188,8 @@ uint32_t tinyusb_msc_storage_get_sector_size(void);
  */
 bool tinyusb_msc_storage_in_use_by_usb_host(void);
 
-// P4 Recorder: true se a última tentativa de montar falhou por falta de sistema de arquivos
-// legível (o cartão não foi formatado; ver PATCH.md).
+// P4 Recorder: true if the last mount attempt failed for lack of a readable file system
+// (the card was not formatted; see PATCH.md).
 bool tinyusb_msc_storage_unformatted(void);
 
 #ifdef __cplusplus

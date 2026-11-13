@@ -55,7 +55,7 @@ typedef struct {
 typedef struct {
     msc_storage_buffer_t storage_buffer;
     bool is_fat_mounted;                  /*!< Indicates if the FAT filesystem is currently mounted. */
-    bool format_if_mount_failed;          /*!< P4 Recorder: respeitar mount_config (o original formatava sempre). */
+    bool format_if_mount_failed;          /*!< P4 Recorder: honor mount_config (the original always formatted). */
     const char *base_path;                /*!< Base path where the filesystem is mounted. */
     union {
         wl_handle_t wl_handle;            /*!< Handle for wear leveling on SPI flash. */
@@ -236,7 +236,7 @@ static esp_err_t _msc_storage_write_sector(uint32_t lba,
     return (s_storage_handle->write)(sector_size, 0 /* not used */, lba, offset, size, src);
 }
 
-// P4 Recorder: a última montagem falhou porque o cartão não tem sistema de arquivos legível.
+// P4 Recorder: the last mount failed because the card has no readable file system.
 static volatile bool s_unformatted;
 
 bool tinyusb_msc_storage_unformatted(void)
@@ -257,7 +257,7 @@ static esp_err_t _mount(char *drv, FATFS *fs)
             ret = ESP_FAIL;
             goto fail;
         }
-        // P4 Recorder: sem permissão, um cartão sem FAT (exFAT, NTFS...) não é formatado sozinho.
+        // P4 Recorder: without permission, a card without FAT (exFAT, NTFS...) is not formatted on its own.
         if (!s_storage_handle->format_if_mount_failed) {
             s_unformatted = true;
             ret = ESP_ERR_NOT_SUPPORTED;

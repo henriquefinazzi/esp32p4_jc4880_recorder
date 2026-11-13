@@ -4,7 +4,7 @@
 
 void dsp_highpass_init(dsp_highpass_t *f, float sample_rate, float cutoff_hz)
 {
-    // Fórmulas do "Audio EQ Cookbook" (R. Bristow-Johnson), Q = 1/sqrt(2).
+    // Formulas from the "Audio EQ Cookbook" (R. Bristow-Johnson), Q = 1/sqrt(2).
     const float w0 = 2.0f * (float)M_PI * cutoff_hz / sample_rate;
     const float alpha = sinf(w0) / (2.0f * 0.70710678f);
     const float c = cosf(w0);

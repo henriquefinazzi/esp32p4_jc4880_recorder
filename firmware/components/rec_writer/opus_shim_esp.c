@@ -1,4 +1,4 @@
-// opus_shim com o codificador Opus da Espressif (esp_audio_codec).
+// opus_shim using Espressif's Opus encoder (esp_audio_codec).
 #include <stdlib.h>
 
 #include "encoder/impl/esp_opus_enc.h"
@@ -19,9 +19,9 @@ opus_shim_t *opus_shim_open(uint32_t sample_rate, uint32_t bitrate)
     cfg.bits_per_sample = 16;
     cfg.bitrate = (int)bitrate;
     cfg.frame_duration = ESP_OPUS_ENC_FRAME_DURATION_20_MS;
-    cfg.application_mode = ESP_OPUS_ENC_APPLICATION_VOIP; // fala: inteligibilidade em primeiro lugar
+    cfg.application_mode = ESP_OPUS_ENC_APPLICATION_VOIP; // speech: intelligibility first
     cfg.complexity = 5;
-    cfg.enable_vbr = false; // taxa constante: a duração sai do tamanho do arquivo
+    cfg.enable_vbr = false; // constant bitrate: duration is derived from the file size
     int out_bytes = 0;
     if (esp_opus_enc_open(&cfg, sizeof(cfg), &e->enc) != ESP_AUDIO_ERR_OK ||
         esp_opus_enc_get_frame_size(e->enc, &e->in_bytes, &out_bytes) != ESP_AUDIO_ERR_OK ||

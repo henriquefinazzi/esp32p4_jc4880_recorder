@@ -1,3 +1,3 @@
 dependencies:
-  # esp_tinyusb vem da cópia local em components/espressif__esp_tinyusb (ver PATCH.md).
+  # esp_tinyusb comes from the local copy in components/espressif__esp_tinyusb (see PATCH.md).
   idf: ">=5.3"

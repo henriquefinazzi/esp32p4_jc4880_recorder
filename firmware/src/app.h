@@ -1,5 +1,5 @@
-// Fronteira entre o núcleo do gravador (main.c) e a interface (ui.c).
-// A interface só lê estado e pede ações por aqui.
+// Boundary between the recorder core (main.c) and the user interface (ui.c).
+// The interface only reads state and requests actions through here.
 #pragma once
 
 #include <stdbool.h>
@@ -10,15 +10,15 @@
 #define APP_VERSION "0.4"
 #define APP_GAIN_MIN_DB 0
 #define APP_GAIN_MAX_DB 42
-#define APP_GAIN_STEP_DB 6 // passos do pré-amplificador do ES8311
+#define APP_GAIN_STEP_DB 6 // ES8311 preamp steps
 
 typedef enum {
     APP_EVENT_NONE,
-    APP_EVENT_SAVED,      // gravação terminou e foi salva
-    APP_EVENT_NO_CARD,    // tentou gravar sem cartão
-    APP_EVENT_CARD_BUSY,  // tentou gravar com o cartão no computador
-    APP_EVENT_CARD_FULL,  // faltou espaço durante a gravação (o que havia foi salvo)
-    APP_EVENT_WRITE_ERROR // outro erro de escrita (o que havia foi salvo)
+    APP_EVENT_SAVED,      // recording finished and was saved
+    APP_EVENT_NO_CARD,    // tried to record without a card
+    APP_EVENT_CARD_BUSY,  // tried to record with the card on the computer
+    APP_EVENT_CARD_FULL,  // ran out of space while recording (what was there was saved)
+    APP_EVENT_WRITE_ERROR // other write error (what was there was saved)
 } app_event_t;
 
 typedef struct {
@@ -26,127 +26,127 @@ typedef struct {
     uint32_t rec_seconds;
     uint32_t rec_bytes;
     char rec_name[16];   // "REC_0023"
-    float level_dbfs;    // pico dos últimos 100 ms
+    float level_dbfs;    // peak over the last 100 ms
     int gain_db;
-    bool updating;       // recebendo firmware novo pelo Wi-Fi
+    bool updating;       // receiving new firmware over Wi-Fi
 
-    bool card_ok;        // cartão presente e com o aparelho
-    bool card_on_host;   // cartão entregue ao computador pela USB
-    bool card_unreadable; // cartão presente em formato que o aparelho não lê (exFAT, NTFS...)
+    bool card_ok;        // card present and held by the device
+    bool card_on_host;   // card handed to the computer over USB
+    bool card_unreadable; // card present in a format the device can't read (exFAT, NTFS...)
     uint32_t total_mb;
     uint32_t free_mb;
 
-    uint32_t event_seq;  // muda a cada novo evento
+    uint32_t event_seq;  // changes with each new event
     app_event_t event;
-    uint32_t event_seconds; // duração salva, para SAVED / CARD_FULL / WRITE_ERROR
+    uint32_t event_seconds; // saved duration, for SAVED / CARD_FULL / WRITE_ERROR
 } app_status_t;
 
-#define APP_TITLE_MAX 60 // bytes do nome dado pelo usuário (UTF-8)
+#define APP_TITLE_MAX 60 // bytes of the user-given name (UTF-8)
 
-// Uma gravação. O arquivo é "REC_0023.WAV" ou, com nome, "REC_0023 Reunião cliente.WAV":
-// o nome viaja com o arquivo (pendrive, download). O número identifica a gravação.
+// A recording. The file is "REC_0023.WAV" or, with a name, "REC_0023 Client meeting.WAV":
+// the name travels with the file (USB drive, download). The number identifies the recording.
 typedef struct {
     int id;                        // 23
-    char file[96];                 // nome do arquivo no cartão
-    char title[APP_TITLE_MAX + 1]; // "" se não tiver nome
+    char file[96];                 // file name on the card
+    char title[APP_TITLE_MAX + 1]; // "" if it has no name
     uint32_t bytes;
     uint32_t seconds;
-    time_t mtime;                  // 0 se o relógio não estava acertado ao gravar
+    time_t mtime;                  // 0 if the clock was not set when recording
 } app_recording_t;
 
 void app_get_status(app_status_t *out);
 
 void app_toggle_recording(void);
 
-// Atualização de firmware em curso (pelo navegador): impede começar uma gravação.
+// Firmware update in progress (from the browser): prevents starting a recording.
 void app_set_updating(bool updating);
-void app_set_gain_db(int db);            // limita ao intervalo e guarda como padrão
+void app_set_gain_db(int db);            // clamps to the range and saves as default
 
-int app_screen_timeout_s(void);          // 0 = nunca apagar
+int app_screen_timeout_s(void);          // 0 = never turn off
 void app_set_screen_timeout_s(int seconds);
 
-// Idioma da interface (código: pt, en ou um arquivo LANGUAGES/<código>.json do cartão).
+// Interface language (code: pt, en or a LANGUAGES/<code>.json file on the card).
 #define APP_LANG_MAX 15
 void app_language(char out[APP_LANG_MAX + 1]);
-void app_set_language(const char *code); // a tela troca no próximo ciclo
+void app_set_language(const char *code); // the screen switches on the next cycle
 
-// Formato das próximas gravações: 0 WAV, 1 Opus, 2 MP3 (ver rec_writer.h).
+// Format of the next recordings: 0 WAV, 1 Opus, 2 MP3 (see rec_writer.h).
 int app_rec_format(void);
 void app_set_rec_format(int fmt);
-// Bytes por segundo de gravação no formato escolhido (para estimar o tempo que cabe).
+// Bytes per second of recording in the chosen format (to estimate the time that fits).
 uint32_t app_rec_bytes_per_s(void);
 
-// Filtro de ruído grave no áudio gravado.
+// Low-frequency noise filter on the recorded audio.
 bool app_filter_enabled(void);
 void app_set_filter_enabled(bool on);
 
-// Cartão cheio: apagar as gravações mais antigas para continuar gravando.
-#define APP_AUTODELETE_MIN_MB 300 // espaço livre mantido durante a gravação
+// Card full: delete the oldest recordings to keep recording.
+#define APP_AUTODELETE_MIN_MB 300 // free space kept while recording
 bool app_autodelete_enabled(void);
 void app_set_autodelete_enabled(bool on);
 
-// Bloqueio de tela com código numérico (4 a 8 dígitos). Liga só se houver código.
+// Screen lock with a numeric code (4 to 8 digits). Turns on only if a code is set.
 #define APP_LOCK_PIN_MAX 8
 bool app_lock_enabled(void);
-bool app_set_lock_enabled(bool on);          // false se não houver código
+bool app_set_lock_enabled(bool on);          // false if no code is set
 void app_lock_pin(char out[APP_LOCK_PIN_MAX + 1]);
-bool app_set_lock_pin(const char *pin);      // false se inválido
-int app_lock_after_s(void);                  // inatividade até travar: 60, 300 ou 900
+bool app_set_lock_pin(const char *pin);      // false if invalid
+int app_lock_after_s(void);                  // inactivity before locking: 60, 300 or 900
 void app_set_lock_after_s(int seconds);
 
-// Tema da tela: 0 escuro, 1 claro.
+// Screen theme: 0 dark, 1 light.
 int app_theme(void);
 void app_set_theme(int theme);
 
-int app_brightness(void);                // porcentagem
-void app_set_brightness(int percent, bool save); // save=false enquanto o dedo arrasta o controle
+int app_brightness(void);                // percent
+void app_set_brightness(int percent, bool save); // save=false while the finger drags the slider
 
-// Mais recentes primeiro. Devolve quantas preencheu.
+// Newest first. Returns how many were filled.
 int app_list_recordings(app_recording_t *out, int max);
 bool app_delete_recording(int id);
-// Dá ou troca o nome ("" remove). Símbolos que o cartão não aceita em nomes são descartados.
+// Sets or changes the name ("" removes it). Symbols the card rejects in names are dropped.
 bool app_rename_recording(int id, const char *title);
-// Caminho completo do arquivo de uma gravação. false se não existir.
+// Full file path of a recording. false if it does not exist.
 bool app_recording_path(int id, char *out, size_t len);
 bool app_format_card(void);
 bool app_retry_card(void);
 
-// Usuário e senha do acesso pelo navegador. Na primeira vez que liga: usuário "recorder" e
-// senha de 6 dígitos sorteada. Só caracteres ASCII visíveis; o usuário não pode ter ":".
+// Username and password for browser access. On first boot: username "recorder" and a
+// random 6-digit password. Printable ASCII only; the username cannot contain ":".
 #define APP_WEB_USER_MAX 32
 #define APP_WEB_PASS_MIN 4
 #define APP_WEB_PASS_MAX 32
 void app_web_user(char out[APP_WEB_USER_MAX + 1]);
 void app_web_pass(char out[APP_WEB_PASS_MAX + 1]);
-bool app_set_web_user(const char *user); // false se inválido
-bool app_set_web_pass(const char *pass); // false se inválido
+bool app_set_web_user(const char *user); // false if invalid
+bool app_set_web_pass(const char *pass); // false if invalid
 
-// Nome do aparelho na rede local (http://<nome>.local). Só letras minúsculas, números e
-// hífen, sem hífen nas pontas, de 1 a APP_HOSTNAME_MAX caracteres.
+// Device name on the local network (http://<name>.local). Lowercase letters, digits and
+// hyphens only, no hyphen at either end, 1 to APP_HOSTNAME_MAX characters.
 #define APP_HOSTNAME_MAX 24
 void app_hostname(char out[APP_HOSTNAME_MAX + 1]);
-bool app_set_hostname(const char *name); // false se o nome for inválido
+bool app_set_hostname(const char *name); // false if the name is invalid
 
-// Servidor de hora (NTP), ex.: pool.ntp.org ou a.st1.ntp.br.
+// Time server (NTP), e.g. pool.ntp.org or a.st1.ntp.br.
 #define APP_NTP_MAX 63
 void app_ntp_server(char out[APP_NTP_MAX + 1]);
-bool app_set_ntp_server(const char *server); // false se inválido
+bool app_set_ntp_server(const char *server); // false if invalid
 
-// Rede própria do gravador (ponto de acesso). Nome e senha são sorteados na primeira vez.
+// Recorder's own network (access point). Name and password are randomized the first time.
 #define APP_AP_SSID_MAX 32
 #define APP_AP_PASS_MAX 63
 bool app_ap_enabled(void);
 void app_set_ap_enabled(bool on);
 void app_ap_ssid(char out[APP_AP_SSID_MAX + 1]);
 void app_ap_pass(char out[APP_AP_PASS_MAX + 1]);
-bool app_set_ap_ssid(const char *ssid); // false se inválido
-bool app_set_ap_pass(const char *pass); // false se inválido (8 a 63 caracteres)
+bool app_set_ap_ssid(const char *ssid); // false if invalid
+bool app_set_ap_pass(const char *pass); // false if invalid (8 to 63 characters)
 
-// Funções de desenvolvedor pela rede: atualizar firmware, ler o registro, capturar a tela.
-// Desligadas, esses endereços respondem que estão desativados.
+// Developer features over the network: update firmware, read the log, capture the screen.
+// When off, these endpoints respond that they are disabled.
 bool app_dev_enabled(void);
 void app_set_dev_enabled(bool on);
 
-// Liga ou desliga o acesso pelo navegador. A escolha fica guardada.
+// Turns browser access on or off. The choice is saved.
 bool app_web_enabled(void);
 void app_set_web_enabled(bool enabled);

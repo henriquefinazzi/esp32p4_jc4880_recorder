@@ -1,5 +1,5 @@
-// Gravador de WAV PCM. C puro, sem dependência de ESP-IDF, para rodar também no Mac.
-// Retornos int: 0 = ok, negativo = erro.
+// PCM WAV writer. Plain C, no ESP-IDF dependency, so it also runs on the Mac.
+// int returns: 0 = ok, negative = error.
 #pragma once
 
 #include <stddef.h>
@@ -11,18 +11,18 @@ extern "C" {
 
 typedef struct wav_writer wav_writer_t;
 
-// Cria o arquivo e escreve um cabeçalho de 44 bytes com tamanhos zero. NULL se falhar.
+// Creates the file and writes a 44-byte header with zero sizes. NULL on failure.
 wav_writer_t *wav_writer_open(const char *path, uint32_t sample_rate_hz,
                               uint16_t channels, uint16_t bits_per_sample);
 
-// Acrescenta PCM. Em erro, o contador de bytes não avança.
+// Appends PCM. On error, the byte counter does not advance.
 int wav_writer_write(wav_writer_t *w, const void *pcm, size_t bytes);
 
-// Regrava os tamanhos no cabeçalho e força a ida ao disco. Depois disso, uma queda
-// de energia preserva tudo o que foi escrito até aqui.
+// Rewrites the sizes in the header and forces a flush to disk. After that, a power
+// loss keeps everything written so far.
 int wav_writer_checkpoint(wav_writer_t *w);
 
-// Checkpoint, fecha e libera. O ponteiro não pode ser usado depois.
+// Checkpoint, close and free. The pointer must not be used afterwards.
 int wav_writer_close(wav_writer_t *w);
 
 uint32_t wav_writer_data_bytes(const wav_writer_t *w);

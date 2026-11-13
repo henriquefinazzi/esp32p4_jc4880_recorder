@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #define WAV_HEADER_BYTES 44u
-// Os campos de tamanho do WAV têm 32 bits; o maior bloco de dados que cabe.
+// WAV size fields are 32 bits; the largest data chunk that fits.
 #define WAV_MAX_DATA_BYTES (UINT32_MAX - (WAV_HEADER_BYTES - 8u))
 
 struct wav_writer {
@@ -87,7 +87,7 @@ int wav_writer_write(wav_writer_t *w, const void *pcm, size_t bytes)
     if (bytes > WAV_MAX_DATA_BYTES - w->data_bytes) return -2;
 
     size_t written = fwrite(pcm, 1, bytes, w->file);
-    // Conta o que de fato foi aceito, para o cabeçalho nunca prometer mais do que há.
+    // Counts what was actually accepted, so the header never promises more than there is.
     w->data_bytes += (uint32_t)written;
     return written == bytes ? 0 : -3;
 }

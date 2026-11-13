@@ -1,10 +1,10 @@
-// Últimas linhas do registro (ESP_LOG) guardadas na memória, para ler pelo navegador
-// (/api/log) quando a USB do console não está ligada.
+// Last log lines (ESP_LOG) kept in memory, to read from the browser
+// (/api/log) when the console USB is not connected.
 #pragma once
 
 #include <stddef.h>
 
 void logbuf_init(void);
 
-// Copia o registro, do mais antigo ao mais novo. Devolve quantos bytes escreveu.
+// Copies the log, oldest to newest. Returns how many bytes were written.
 size_t logbuf_copy(char *out, size_t len);

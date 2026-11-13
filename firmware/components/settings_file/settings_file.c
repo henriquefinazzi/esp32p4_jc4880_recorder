@@ -6,7 +6,7 @@
 
 #include "cJSON.h"
 
-// ---------- Regras ----------
+// ---------- Rules ----------
 
 bool settings_host_valid(const char *s)
 {
@@ -19,7 +19,7 @@ bool settings_host_valid(const char *s)
     return true;
 }
 
-// ASCII visível, sem espaço (o navegador não manda acentos de forma confiável no HTTP Basic).
+// Printable ASCII, no space (browsers do not send accents reliably in HTTP Basic).
 static bool visible_ascii(const char *s, size_t min, size_t max, bool allow_colon)
 {
     size_t len = s ? strlen(s) : 0;
@@ -41,7 +41,7 @@ bool settings_pass_valid(const char *s)
     return visible_ascii(s, SETTINGS_PASS_MIN, SETTINGS_PASS_MAX, true);
 }
 
-// Rede aberta (senha vazia) ou WPA: 8 a 63 caracteres, ou a chave de 64 dígitos hexadecimais.
+// Open network (empty password) or WPA: 8 to 63 characters, or the 64-digit hex key.
 bool settings_wifi_valid(const char *ssid, const char *pass)
 {
     size_t sl = ssid ? strlen(ssid) : 0, pl = pass ? strlen(pass) : 0;
@@ -129,7 +129,7 @@ static bool gain_valid(int v)
     return v >= SETTINGS_GAIN_MIN_DB && v <= SETTINGS_GAIN_MAX_DB && v % SETTINGS_GAIN_STEP_DB == 0;
 }
 
-// ---------- Escrita ----------
+// ---------- Writing ----------
 
 char *settings_to_json(const settings_t *s)
 {
@@ -181,7 +181,7 @@ char *settings_to_json(const settings_t *s)
     return text;
 }
 
-// ---------- Leitura ----------
+// ---------- Reading ----------
 
 static void read_int(const cJSON *obj, const char *name, int *dst, bool (*valid)(int), int *ignored)
 {
@@ -208,7 +208,7 @@ static void read_str(const cJSON *obj, const char *name, char *dst, size_t len, 
     }
 }
 
-// Objeto da seção, ou NULL. Uma seção que existe mas não é objeto conta como inválida.
+// The section's object, or NULL. A section that exists but is not an object counts as invalid.
 static const cJSON *section(const cJSON *root, const char *name, int *ignored)
 {
     const cJSON *it = cJSON_GetObjectItemCaseSensitive(root, name);
@@ -226,7 +226,7 @@ static void read_wifi(const cJSON *root, settings_t *out, int *ignored)
         (*ignored)++;
         return;
     }
-    // A lista do arquivo substitui a do aparelho; redes inválidas ou repetidas ficam de fora.
+    // The file's list replaces the device's; invalid or duplicate networks are left out.
     settings_t tmp = *out;
     tmp.wifi_count = 0;
     const cJSON *n;
@@ -306,7 +306,7 @@ bool settings_from_json(const char *text, const settings_t *current, settings_t 
         read_str(lock, "codigo", out->lock_pin, sizeof(out->lock_pin), settings_lock_pin_valid, ignored);
         bool_item(lock, "ligado", &out->lock_on, ignored);
         read_int(lock, "apos_s", &out->lock_after_s, lock_after_valid, ignored);
-        if (out->lock_on && !settings_lock_pin_valid(out->lock_pin)) out->lock_on = false; // sem código não trava
+        if (out->lock_on && !settings_lock_pin_valid(out->lock_pin)) out->lock_on = false; // no code, no lock
     }
     const cJSON *clock = section(root, "relogio", ignored);
     if (clock) read_str(clock, "ntp", out->ntp, sizeof(out->ntp), settings_ntp_valid, ignored);

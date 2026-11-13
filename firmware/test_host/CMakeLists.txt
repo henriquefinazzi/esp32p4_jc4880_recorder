@@ -13,7 +13,7 @@ target_compile_options(test_wav_writer PRIVATE -Wall -Wextra -Werror)
 
 add_test(NAME wav_writer COMMAND test_wav_writer)
 
-set(CJSON_DIR $ENV{HOME}/.platformio/packages/framework-espidf/components/json/cJSON CACHE PATH "Pasta do cJSON")
+set(CJSON_DIR $ENV{HOME}/.platformio/packages/framework-espidf/components/json/cJSON CACHE PATH "cJSON folder")
 add_executable(test_settings_file
     test_settings_file.c
     ../components/settings_file/settings_file.c
@@ -25,7 +25,7 @@ set_source_files_properties(test_settings_file.c ../components/settings_file/set
 
 add_test(NAME settings_file COMMAND test_settings_file)
 
-# Formatos de gravação (WAV, Opus em Ogg, MP3 pelo Shine), com libopus do computador.
+# Recording formats (WAV, Opus in Ogg, MP3 via Shine), using the host's libopus.
 find_path(OPUS_INCLUDE opus/opus.h PATHS /opt/homebrew/include /usr/local/include)
 find_library(OPUS_LIB opus PATHS /opt/homebrew/lib /usr/local/lib)
 file(GLOB SHINE_SRC ../components/shine/src/*.c)

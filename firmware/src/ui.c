@@ -1,5 +1,5 @@
-// Interface do gravador (LVGL 9), 480x800 em pé.
-// Interface do Gravador. Tudo aqui roda na tarefa do LVGL, exceto ui_init().
+// Recorder UI (LVGL 9), 480x800 portrait.
+// Recorder UI. Everything here runs in the LVGL task, except ui_init().
 #include "ui.h"
 
 #include <stdint.h>
@@ -27,10 +27,10 @@
 #include "net.h"
 #include "web.h"
 
-// 1 = ao ligar, percorre as telas e despeja capturas pela serial (para conferência).
+// 1 = at boot, walk through the screens and dump captures over serial (for review).
 #define UI_TOUR 0
 
-// Paletas dos temas. As telas usam C_*; trocar de tema troca s_pal e remonta tudo.
+// Theme palettes. Screens use C_*; switching theme swaps s_pal and rebuilds everything.
 typedef struct {
     uint32_t bg, surf, surf2, text, muted, green, red, amber, blue, key_fn;
     bool dark;
@@ -57,7 +57,7 @@ static int s_theme_applied = -1;
 #define C_AMBER (s_pal->amber)
 #define C_BLUE (s_pal->blue)
 #define C_WHITE 0xFFFFFF
-#define C_QR_DARK 0x0F1317 // QR sempre escuro sobre branco, nos dois temas
+#define C_QR_DARK 0x0F1317 // QR always dark on white, in both themes
 
 #define LEVEL_MIN_DB (-60)
 #define TOAST_MS 8000
@@ -68,7 +68,7 @@ typedef enum { SCR_HOME, SCR_REC, SCR_LIST, SCR_DETAIL, SCR_RENAME, SCR_SETTINGS
 typedef enum { NOTICE_USB, NOTICE_NO_CARD, NOTICE_UNREADABLE, NOTICE_CARD_FULL, NOTICE_WRITE_ERROR } notice_t;
 typedef enum { BTN_PRIMARY, BTN_OUTLINE, BTN_NEUTRAL, BTN_DANGER, BTN_DANGER_FILLED } button_kind_t;
 
-// ---------- Estado da interface ----------
+// ---------- UI state ----------
 
 static lv_obj_t *s_root, *s_clock, *s_wifi_icon, *s_ap_icon, *s_content, *s_tabs;
 static lv_obj_t *s_tab_items[3];
@@ -84,7 +84,7 @@ static uint32_t s_notice_seconds;
 static app_recording_t s_recs[MAX_RECORDINGS];
 static int s_rec_count;
 static int s_sel_rec;
-// Seleção de várias gravações na lista (para apagar de uma vez).
+// Multi-selection of recordings in the list (to delete them at once).
 static bool s_select_mode;
 static bool s_selected[MAX_RECORDINGS];
 static lv_obj_t *s_sel_marks[MAX_RECORDINGS];
@@ -94,20 +94,20 @@ static char s_sel_ssid[33];
 static bool s_screen_off;
 static lv_obj_t *s_wake_overlay;
 
-// Ponteiros para o que muda com o tempo; zerados a cada troca de tela.
+// Pointers to things that change over time; cleared on every screen change.
 static lv_obj_t *s_home_space, *s_rec_timer, *s_rec_bar, *s_rec_file, *s_rec_gain, *s_pass_ta;
-static bool s_hostname_error; // o nome digitado foi recusado
-// SCR_EDIT: tela de um campo de texto, reaproveitada para vários ajustes.
+static bool s_hostname_error; // the typed name was rejected
+// SCR_EDIT: single text-field screen, reused for several settings.
 typedef enum { EDIT_WEB_USER, EDIT_WEB_PASS, EDIT_AP_SSID, EDIT_AP_PASS, EDIT_NTP } edit_t;
 static edit_t s_edit;
-static bool s_lock_enable_after_pin; // ao salvar o código, ligar o bloqueio
-static bool s_edit_error;     // o valor digitado foi recusado
-static lv_obj_t *s_ap_clients; // contador de aparelhos na tela da rede própria
-static char s_home_web[64];   // endereço mostrado na tela inicial ("" = nenhum)
-static lv_obj_t *s_keyboard; // filho da raiz, para ocupar a largura toda da tela
+static bool s_lock_enable_after_pin; // when the PIN is saved, enable the lock
+static bool s_edit_error;     // the typed value was rejected
+static lv_obj_t *s_ap_clients; // connected-device counter on the own-network screen
+static char s_home_web[64];   // address shown on the home screen ("" = none)
+static lv_obj_t *s_keyboard; // child of the root, so it spans the full screen width
 static bool s_home_card_ok, s_home_on_host, s_home_unreadable;
 static bool s_wifi_scan_done;
-static bool s_user_connect; // a conexão em curso foi pedida na tela (falha vira popup)
+static bool s_user_connect; // the ongoing connection was requested from the UI (failure shows a popup)
 static net_state_t s_wifi_state;
 
 static void show(screen_t s);
@@ -115,7 +115,7 @@ static void build_wifi(void);
 static void edit_go_cb(lv_event_t *e);
 static void apply_theme(void);
 
-// ---------- Fontes ----------
+// ---------- Fonts ----------
 
 static const lv_font_t *font(weight_t w, int size)
 {
@@ -137,13 +137,13 @@ static const lv_font_t *font(weight_t w, int size)
     return f;
 }
 
-// Símbolos (casa, lixeira, Wi-Fi...) vêm da fonte embutida do LVGL.
+// Symbols (home, trash, Wi-Fi...) come from LVGL's built-in font.
 static const lv_font_t *symbol_font(int size)
 {
     return size >= 48 ? &lv_font_montserrat_48 : size >= 28 ? &lv_font_montserrat_28 : &lv_font_montserrat_20;
 }
 
-// ---------- Blocos de construção ----------
+// ---------- Building blocks ----------
 
 static lv_obj_t *box(lv_obj_t *parent, lv_flex_flow_t flow, int gap)
 {
@@ -154,7 +154,7 @@ static lv_obj_t *box(lv_obj_t *parent, lv_flex_flow_t flow, int gap)
     lv_obj_set_style_pad_row(o, gap, 0);
     lv_obj_set_style_pad_column(o, gap, 0);
     lv_obj_remove_flag(o, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE); // senão um bloco interno engole o toque da linha
+    lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE); // otherwise an inner block swallows the row's tap
     return o;
 }
 
@@ -293,7 +293,7 @@ static void section(const char *s)
     label(s_content, s, W_SEMIBOLD, 14, C_MUTED);
 }
 
-// Linha de lista: título, valor à direita e seta (quando leva a outra tela).
+// List row: title, value on the right and arrow (when it leads to another screen).
 static lv_obj_t *row(const char *title, const char *sub, const char *value, const char *right_symbol, uint32_t symbol_color, lv_event_cb_t cb, void *ud)
 {
     lv_obj_t *r = card(s_content, LV_FLEX_FLOW_ROW, 12);
@@ -319,7 +319,7 @@ static void data_row(lv_obj_t *parent, const char *k, const char *v, uint32_t co
     label(r, v, W_SEMIBOLD, 17, color);
 }
 
-// ---------- Formatação ----------
+// ---------- Formatting ----------
 
 static void fmt_duration(char *out, size_t len, uint32_t seconds)
 {
@@ -335,7 +335,7 @@ static void fmt_gb(char *out, size_t len, uint32_t mb)
     snprintf(out, len, T("fmt.gb"), (unsigned long)(mb / 1024), (unsigned long)(mb % 1024 * 10 / 1024));
 }
 
-// Tamanho de arquivo: em KB abaixo de 1 MB, para gravações curtas não aparecerem como "0,0 MB".
+// File size: in KB below 1 MB, so short recordings don't show up as "0.0 MB".
 static void fmt_mb(char *out, size_t len, uint32_t bytes)
 {
     if (bytes < 1024 * 1024) {
@@ -346,13 +346,13 @@ static void fmt_mb(char *out, size_t len, uint32_t bytes)
     snprintf(out, len, T("fmt.mb"), (unsigned long)(tenths / 10), (unsigned long)(tenths % 10));
 }
 
-// Horas de gravação que cabem (WAV 16 kHz mono: 32 kB por segundo).
+// Hours of recording that fit (16 kHz mono WAV: 32 kB per second).
 static uint32_t hours_for_mb(uint32_t mb)
 {
     return (uint32_t)((uint64_t)mb * 1024 * 1024 / app_rec_bytes_per_s() / 3600);
 }
 
-// Abreviação do mês (0 = janeiro) no idioma atual.
+// Month abbreviation (0 = January) in the current language.
 static const char *month_abbr(int mon)
 {
     static const char *const KEYS[12] = {"month.1", "month.2", "month.3", "month.4", "month.5", "month.6",
@@ -360,7 +360,7 @@ static const char *month_abbr(int mon)
     return T(KEYS[mon]);
 }
 
-// Data da gravação ("Hoje, 14:05", "7 nov, 15:20"). false se foi gravada sem relógio.
+// Recording date ("Today, 14:05", "Nov 7, 15:20"). false if recorded without a clock.
 static bool fmt_recording_date(char *out, size_t len, const app_recording_t *r)
 {
     if (!r->mtime) return false;
@@ -379,7 +379,7 @@ static bool fmt_recording_date(char *out, size_t len, const app_recording_t *r)
     return true;
 }
 
-// Como a gravação aparece: o nome dado a ela, senão a data, senão o número.
+// How a recording is shown: its given name, else the date, else the number.
 static void fmt_recording_title(char *out, size_t len, const app_recording_t *r)
 {
     if (r->title[0]) {
@@ -394,7 +394,7 @@ static const char *timeout_text(int s)
     return s == 0 ? T("display.timeout.never") : s == 10 ? "10 s" : s == 30 ? "30 s" : "1 min";
 }
 
-// ---------- Diálogo de confirmação ----------
+// ---------- Confirmation dialog ----------
 
 static lv_obj_t *s_dialog;
 static void (*s_dialog_action)(void);
@@ -426,7 +426,7 @@ static void dialog_ex(const char *title, const char *text, const char *cancel_la
     s_dialog_action = action;
     s_dialog = box(s_root, LV_FLEX_FLOW_COLUMN, 0);
     lv_obj_add_flag(s_dialog, LV_OBJ_FLAG_FLOATING);
-    lv_obj_add_flag(s_dialog, LV_OBJ_FLAG_CLICKABLE); // bloqueia o que está atrás
+    lv_obj_add_flag(s_dialog, LV_OBJ_FLAG_CLICKABLE); // blocks whatever is behind
     lv_obj_set_size(s_dialog, lv_pct(100), lv_pct(100));
     bg(s_dialog, 0x000000, LV_OPA_60, 0);
     pad(s_dialog, 24, 0);
@@ -440,17 +440,17 @@ static void dialog_ex(const char *title, const char *text, const char *cancel_la
     wrapped(c, text, W_REGULAR, 17, C_MUTED, false);
     lv_obj_t *actions = box(c, LV_FLEX_FLOW_ROW, 12);
     lv_obj_set_width(actions, lv_pct(100));
-    if (cancel_label) lv_obj_set_flex_grow(button(actions, cancel_label, BTN_NEUTRAL, NULL, dialog_cancel_cb, NULL), 1); // NULL: só o OK
+    if (cancel_label) lv_obj_set_flex_grow(button(actions, cancel_label, BTN_NEUTRAL, NULL, dialog_cancel_cb, NULL), 1); // NULL: OK only
     lv_obj_set_flex_grow(button(actions, ok_label, ok_kind, ok_symbol, dialog_ok_cb, NULL), 1);
 }
 
-// Confirmação de ação destrutiva.
+// Confirmation of a destructive action.
 static void dialog(const char *title, const char *text, const char *ok_label, void (*action)(void))
 {
     dialog_ex(title, text, T("common.cancel"), ok_label, BTN_DANGER_FILLED, LV_SYMBOL_TRASH, action);
 }
 
-// ---------- Avisos de tela cheia ----------
+// ---------- Full-screen notices ----------
 
 static void retry_card_cb(lv_event_t *e)
 {
@@ -510,7 +510,7 @@ static void notice(notice_t kind)
     if (kind == NOTICE_UNREADABLE) button(s_content, T("common.retry"), BTN_NEUTRAL, NULL, retry_card_cb, NULL);
 }
 
-// ---------- Telas ----------
+// ---------- Screens ----------
 
 static void toggle_cb(lv_event_t *e)
 {
@@ -518,8 +518,8 @@ static void toggle_cb(lv_event_t *e)
     app_toggle_recording();
 }
 
-// Endereço do acesso pelo navegador para a tela inicial; "" quando desligado ou sem rede.
-// Linha 1: endereço; linha 2: IP ou rede. "" quando não há como acessar.
+// Browser-access address for the home screen; "" when disabled or offline.
+// Line 1: address; line 2: IP or network. "" when there is no way to connect.
 #define HOME_SUB_LEN 48
 static void home_web_text(char *out, size_t len, char sub[HOME_SUB_LEN])
 {
@@ -586,7 +586,7 @@ static void build_home(void)
     symbol(info, LV_SYMBOL_SD_CARD, 20, C_MUTED);
     s_home_space = label(info, "", W_REGULAR, 16, C_TEXT);
 
-    // Acesso pelo navegador ligado e com rede: endereço e IP; o toque abre a tela de acesso.
+    // Browser access on and network up: address and IP; tapping opens the access screen.
     char ip[HOME_SUB_LEN];
     home_web_text(s_home_web, sizeof(s_home_web), ip);
     if (s_home_web[0]) {
@@ -739,7 +739,7 @@ static void build_list(void)
         wrapped(s_content, T("list.empty"), W_REGULAR, 18, C_MUTED, false);
         return;
     }
-    // Botão no cabeçalho: entra e sai do modo de seleção.
+    // Header button: enters and leaves selection mode.
     spacer(h);
     lv_obj_t *sel = box(h, LV_FLEX_FLOW_ROW, 0);
     bg(sel, C_SURF, LV_OPA_COVER, 12);
@@ -757,7 +757,7 @@ static void build_list(void)
         fmt_duration(dur, sizeof(dur), s_recs[i].seconds);
         fmt_mb(size, sizeof(size), s_recs[i].bytes);
         if (s_recs[i].title[0] && fmt_recording_date(date, sizeof(date), &s_recs[i])) {
-            snprintf(sub, sizeof(sub), "%s · %s · %s", date, dur, size); // com nome, a data desce para a segunda linha
+            snprintf(sub, sizeof(sub), "%s · %s · %s", date, dur, size); // with a name, the date moves to the second line
         } else {
             snprintf(sub, sizeof(sub), "%s · %s", dur, size);
         }
@@ -821,7 +821,7 @@ static void brightness_cb(lv_event_t *e)
 {
     lv_obj_t *slider = lv_event_get_target(e);
     int v = (int)lv_slider_get_value(slider);
-    // Aplica enquanto o dedo arrasta; só grava na memória ao soltar.
+    // Applies while the finger drags; only saved to storage on release.
     app_set_brightness(v, lv_event_get_code(e) == LV_EVENT_RELEASED);
     lv_label_set_text_fmt((lv_obj_t *)lv_event_get_user_data(e), "%d%%", v);
 }
@@ -839,7 +839,7 @@ static void brightness_row(void)
 
     lv_obj_t *track = box(c, LV_FLEX_FLOW_COLUMN, 0);
     lv_obj_set_width(track, lv_pct(100));
-    pad(track, 16, 12); // o botão (28 px) é maior que a trilha: sem esta folga o bloco o corta
+    pad(track, 16, 12); // the knob (28 px) is larger than the track: without this padding the block clips it
     lv_obj_t *s = lv_slider_create(track);
     lv_obj_set_size(s, lv_pct(100), 10);
     lv_slider_set_range(s, DISPLAY_BRIGHTNESS_MIN, 100);
@@ -847,26 +847,26 @@ static void brightness_row(void)
     lv_obj_set_style_bg_color(s, lv_color_hex(C_SURF2), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_MAIN);
     lv_obj_set_style_bg_color(s, lv_color_hex(C_GREEN), LV_PART_INDICATOR);
-    lv_obj_set_style_bg_color(s, lv_color_hex(s_pal->dark ? C_WHITE : C_GREEN), LV_PART_KNOB); // branco some no tema claro
-    lv_obj_set_style_pad_all(s, 9, LV_PART_KNOB); // botão de 28 px
-    lv_obj_set_ext_click_area(s, 24);              // área de toque maior que a trilha
+    lv_obj_set_style_bg_color(s, lv_color_hex(s_pal->dark ? C_WHITE : C_GREEN), LV_PART_KNOB); // white disappears on the light theme
+    lv_obj_set_style_pad_all(s, 9, LV_PART_KNOB); // 28 px knob
+    lv_obj_set_ext_click_area(s, 24);              // touch area larger than the track
     lv_obj_add_event_cb(s, brightness_cb, LV_EVENT_VALUE_CHANGED, value);
     lv_obj_add_event_cb(s, brightness_cb, LV_EVENT_RELEASED, value);
 }
 
 static void theme_cb(lv_event_t *e)
 {
-    app_set_theme((int)(intptr_t)lv_event_get_user_data(e)); // o tick remonta a interface no tema novo
+    app_set_theme((int)(intptr_t)lv_event_get_user_data(e)); // the tick rebuilds the UI in the new theme
 }
 
-// Ajustes > Tela: brilho, tempo para apagar e tema.
+// Settings > Display: brightness, screen-off timeout and theme.
 static void switch_row(const char *title, const char *sub, bool on, lv_event_cb_t cb);
 
 static void lock_sw_cb(lv_event_t *e)
 {
     bool on = lv_obj_has_state(lv_event_get_target(e), LV_STATE_CHECKED);
     if (on && !app_set_lock_enabled(true)) {
-        // Ainda sem código: pede o código e liga ao salvar.
+        // No PIN yet: ask for one and enable on save.
         s_lock_enable_after_pin = true;
         show(SCR_PIN);
         return;
@@ -902,7 +902,7 @@ static void build_display(void)
     section(T("display.theme"));
     lv_obj_t *opts = box(s_content, LV_FLEX_FLOW_ROW, 12);
     lv_obj_set_width(opts, lv_pct(100));
-    static const char *const NAMES[2] = {"display.theme.dark", "display.theme.light"}; // chaves de texto
+    static const char *const NAMES[2] = {"display.theme.dark", "display.theme.light"}; // text keys
     static const palette_t *const PALS[2] = {&PAL_DARK, &PAL_LIGHT};
     for (int i = 0; i < 2; i++) {
         bool sel = app_theme() == i;
@@ -912,7 +912,7 @@ static void build_display(void)
         pad(o, 14, 14);
         lv_obj_set_style_border_width(o, sel ? 2 : 0, 0);
         lv_obj_set_style_border_color(o, lv_color_hex(C_GREEN), 0);
-        // Miniatura do tema: fundo, um cartão e um botão.
+        // Theme thumbnail: background, a card and a button.
         lv_obj_t *mini = box(o, LV_FLEX_FLOW_COLUMN, 6);
         lv_obj_set_width(mini, lv_pct(100));
         bg(mini, PALS[i]->bg, LV_OPA_COVER, 8);
@@ -933,7 +933,7 @@ static void build_display(void)
     }
 }
 
-// Ajustes > Gravação: formato do arquivo, filtro e o que fazer com o cartão cheio.
+// Settings > Recording: file format, filter and what to do when the card is full.
 static void fmt_cb(lv_event_t *e)
 {
     app_set_rec_format((int)(intptr_t)lv_event_get_user_data(e));
@@ -980,12 +980,12 @@ static void build_reccfg(void)
     switch_row(T("reccfg.autodel"), T("reccfg.autodel_sub"), app_autodelete_enabled(), autodel_sw_cb);
 }
 
-// Ajustes > Idioma: embutidos e os da pasta LANGUAGES do cartão.
+// Settings > Language: built-in ones plus those in the card's LANGUAGES folder.
 static i18n_lang_t s_langs[I18N_MAX_LANGS];
 
 static void lang_cb(lv_event_t *e)
 {
-    app_set_language(s_langs[(intptr_t)lv_event_get_user_data(e)].code); // o tick troca e remonta
+    app_set_language(s_langs[(intptr_t)lv_event_get_user_data(e)].code); // the tick switches and rebuilds
 }
 
 static void build_lang(void)
@@ -999,7 +999,7 @@ static void build_lang(void)
     wrapped(s_content, T("lang.footer"), W_REGULAR, 14, C_MUTED, false);
 }
 
-// ---------- Sobre ----------
+// ---------- About ----------
 
 static lv_obj_t *s_about_progress;
 
@@ -1011,7 +1011,7 @@ static void c6_update_action(void)
         dialog_ex(T("about.c6.busy_title"), T("about.c6.busy_text"), NULL, T("common.ok"), BTN_PRIMARY, NULL, NULL);
         return;
     }
-    app_set_updating(true); // não deixa começar uma gravação: o aparelho reinicia no fim
+    app_set_updating(true); // prevents starting a recording: the device reboots at the end
     show(SCR_ABOUT);
 }
 
@@ -1086,7 +1086,7 @@ static void build_about(void)
     }
 }
 
-// ---------- Bloqueio de tela ----------
+// ---------- Screen lock ----------
 
 static lv_obj_t *s_lock, *s_lock_time, *s_lock_rec, *s_lock_dots, *s_lock_msg;
 static bool s_locked;
@@ -1115,7 +1115,7 @@ static void lock_hide(void)
 static void lock_key_cb(lv_event_t *e)
 {
     const char *k = lv_event_get_user_data(e);
-    if ((int32_t)(s_lock_wait_until - lv_tick_get()) > 0) return; // esperando depois de muitos erros
+    if ((int32_t)(s_lock_wait_until - lv_tick_get()) > 0) return; // waiting after too many failed attempts
     size_t n = strlen(s_lock_entry);
     if (strcmp(k, "<") == 0) {
         if (n) s_lock_entry[n - 1] = 0;
@@ -1145,7 +1145,7 @@ static void lock_key_cb(lv_event_t *e)
     lock_update_dots();
 }
 
-// Teclado numérico grande (3 x 4). Teclas: "0"-"9", "<" apaga e, com `with_ok`, ">" confirma.
+// Large numeric keypad (3 x 4). Keys: "0"-"9", "<" deletes and, with `with_ok`, ">" confirms.
 static void keypad(lv_obj_t *parent, lv_event_cb_t cb, bool with_ok)
 {
     static const char *const KEYS[12] = {"1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "<"};
@@ -1158,7 +1158,7 @@ static void keypad(lv_obj_t *parent, lv_event_cb_t cb, bool with_ok)
             lv_obj_t *b = box(rowb, LV_FLEX_FLOW_COLUMN, 0);
             lv_obj_set_size(b, 96, 72);
             center(b);
-            if (!k[0]) continue; // canto vazio
+            if (!k[0]) continue; // empty corner
             bg(b, k == OK ? C_GREEN : C_SURF, LV_OPA_COVER, 36);
             if (k[0] == '<') symbol(b, LV_SYMBOL_BACKSPACE, 28, C_TEXT);
             else if (k == OK) symbol(b, LV_SYMBOL_OK, 28, C_WHITE);
@@ -1169,9 +1169,9 @@ static void keypad(lv_obj_t *parent, lv_event_cb_t cb, bool with_ok)
     }
 }
 
-// ---------- Definir o código de bloqueio (só números, digitado duas vezes) ----------
+// ---------- Set the lock PIN (digits only, entered twice) ----------
 
-static int s_pin_step;            // 0: novo código; 1: confirmação
+static int s_pin_step;            // 0: new PIN; 1: confirmation
 static char s_pin_first[APP_LOCK_PIN_MAX + 1], s_pin_entry[APP_LOCK_PIN_MAX + 1];
 static lv_obj_t *s_pin_dots, *s_pin_msg, *s_pin_prompt;
 
@@ -1202,7 +1202,7 @@ static void pin_key_cb(lv_event_t *e)
         pin_refresh(NULL, false);
         return;
     }
-    // Confirmar
+    // Confirm
     if (n < 4) {
         pin_refresh("pin.short", true);
         return;
@@ -1221,7 +1221,7 @@ static void pin_key_cb(lv_event_t *e)
         return;
     }
     app_set_lock_pin(s_pin_entry);
-    if (s_lock_enable_after_pin) app_set_lock_enabled(true); // ligou o bloqueio sem ter código ainda
+    if (s_lock_enable_after_pin) app_set_lock_enabled(true); // lock was enabled before a PIN existed
     s_lock_enable_after_pin = false;
     s_pin_first[0] = s_pin_entry[0] = 0;
     show(SCR_DISPLAY);
@@ -1253,7 +1253,7 @@ static void lock_show(void)
     s_lock_entry[0] = 0;
     s_lock = box(s_root, LV_FLEX_FLOW_COLUMN, 10);
     lv_obj_add_flag(s_lock, LV_OBJ_FLAG_FLOATING);
-    lv_obj_add_flag(s_lock, LV_OBJ_FLAG_CLICKABLE); // nada atrás recebe toque
+    lv_obj_add_flag(s_lock, LV_OBJ_FLAG_CLICKABLE); // nothing behind receives taps
     lv_obj_set_size(s_lock, lv_pct(100), lv_pct(100));
     bg(s_lock, C_BG, LV_OPA_COVER, 0);
     pad(s_lock, 24, 40);
@@ -1268,7 +1268,7 @@ static void lock_show(void)
     keypad(s_lock, lock_key_cb, false);
 }
 
-// Chamado a cada ciclo: trava por inatividade, mantém a tela de bloqueio por cima e atualiza.
+// Called every cycle: locks on inactivity, keeps the lock screen on top and updates it.
 static void lock_tick(const app_status_t *st)
 {
     if (!app_lock_enabled()) {
@@ -1305,7 +1305,7 @@ static void build_settings(void)
 
     header(T("settings.title"), false, SCR_HOME);
     section(T("settings.connection"));
-    lv_obj_set_style_pad_row(s_content, 9, 0); // a lista inteira cabe sem rolar
+    lv_obj_set_style_pad_row(s_content, 9, 0); // the whole list fits without scrolling
     row(T("settings.wifi"), NULL, app_ap_enabled() ? T("settings.wifi.paused") : ns == NET_CONNECTED ? ssid : ns == NET_CONNECTING ? T("settings.wifi.connecting") : T("settings.wifi.disconnected"),
         LV_SYMBOL_RIGHT, C_MUTED, go_cb, (void *)(intptr_t)SCR_WIFI);
     row(T("ap.title"), NULL, app_ap_enabled() ? T("common.on_f") : T("common.off_f"), LV_SYMBOL_RIGHT, C_MUTED, go_cb, (void *)(intptr_t)SCR_AP);
@@ -1329,7 +1329,7 @@ static void build_settings(void)
     }
     char ntp[APP_NTP_MAX + 1];
     app_ntp_server(ntp);
-    if (strlen(ntp) > 18) strcpy(ntp + 16, "…"); // o valor não pode empurrar o título
+    if (strlen(ntp) > 18) strcpy(ntp + 16, "…"); // the value must not push the title aside
     row(T("ntp.title"), NULL, ntp, LV_SYMBOL_RIGHT, C_MUTED, edit_go_cb, (void *)(intptr_t)EDIT_NTP);
     if (st.card_ok) {
         fmt_gb(gb, sizeof(gb), st.free_mb);
@@ -1341,7 +1341,7 @@ static void build_settings(void)
     static const char *const FMT_NAMES[] = {"WAV", "Opus", "MP3"};
     row(T("settings.recording"), NULL, FMT_NAMES[app_rec_format()], LV_SYMBOL_RIGHT, C_MUTED, go_cb, (void *)(intptr_t)SCR_RECCFG);
     row(T("about.title"), NULL, "v" APP_VERSION, LV_SYMBOL_RIGHT, C_MUTED, go_cb, (void *)(intptr_t)SCR_ABOUT);
-    // Linhas um pouco mais baixas aqui, para a lista inteira caber sem rolar.
+    // Slightly shorter rows here, so the whole list fits without scrolling.
     for (uint32_t i = 0; i < lv_obj_get_child_count(s_content); i++) {
         lv_obj_t *ch = lv_obj_get_child(s_content, (int32_t)i);
         if (lv_obj_get_style_pad_top(ch, 0) == 14) lv_obj_set_style_pad_ver(ch, 11, 0);
@@ -1425,13 +1425,13 @@ static void build_wifi(void)
             W_REGULAR, 14, C_MUTED, false);
 }
 
-// ---------- Teclado ----------
-// Três modos, alternados pela tecla do canto inferior esquerdo, cujo rótulo mostra
-// o próximo modo: letras -> "123" -> "áç" -> "abc". Maiúsculas pela tecla de seta.
+// ---------- Keyboard ----------
+// Three modes, cycled by the bottom-left key, whose label shows the next mode:
+// letters -> "123" -> "áç" -> "abc". Uppercase via the arrow key.
 
-#define KEY (4 | LV_BUTTONMATRIX_CTRL_POPOVER)             // tecla de caractere
-#define KEY_FN(w) ((w) | LV_KEYBOARD_CTRL_BUTTON_FLAGS)     // tecla de função
-#define KEY_DEL (6 | LV_BUTTONMATRIX_CTRL_CHECKED)          // apagar: repete ao segurar
+#define KEY (4 | LV_BUTTONMATRIX_CTRL_POPOVER)             // character key
+#define KEY_FN(w) ((w) | LV_KEYBOARD_CTRL_BUTTON_FLAGS)     // function key
+#define KEY_DEL (6 | LV_BUTTONMATRIX_CTRL_CHECKED)          // delete: repeats while held
 #define KB_MODE_NUMBERS "123"
 #define KB_MODE_ACCENTS "áç"
 #define KB_MODE_LETTERS "abc"
@@ -1486,7 +1486,7 @@ static void keyboard_cb(lv_event_t *e)
     } else if (strcmp(txt, KB_MODE_LETTERS) == 0) {
         lv_keyboard_set_mode(kb, LV_KEYBOARD_MODE_TEXT_LOWER);
     } else {
-        lv_keyboard_def_event_cb(e); // caracteres, apagar e OK
+        lv_keyboard_def_event_cb(e); // characters, delete and OK
     }
 }
 
@@ -1572,7 +1572,7 @@ static void build_web(void)
     net_ap_info_t ap;
     net_ap_info(&ap);
     if (app_ap_enabled() && ap.on && ap.ip[0]) {
-        // Rede própria: o endereço é o IP dela (nome .local nem sempre funciona sem roteador).
+        // Own network: the address is its IP (.local names don't always work without a router).
         memset(&info, 0, sizeof(info));
         strlcpy(info.ip, ap.ip, sizeof(info.ip));
     } else if (!net_info(&info)) {
@@ -1588,7 +1588,7 @@ static void build_web(void)
     snprintf(named, sizeof(named), "http://%s.local", host);
 
     label(s_content, T("web.open_on"), W_REGULAR, 16, C_MUTED);
-    // O toque no endereço abre a troca do nome na rede.
+    // Tapping the address opens the network name (hostname) editor.
     lv_obj_t *c = card(s_content, LV_FLEX_FLOW_ROW, 12);
     lv_obj_t *addr = box(c, LV_FLEX_FLOW_COLUMN, 4);
     lv_obj_set_flex_grow(addr, 1);
@@ -1617,7 +1617,7 @@ static void build_web(void)
     wrapped(s_content, T("web.qr_hint"), W_REGULAR, 15, C_MUTED, true);
 }
 
-// Campo de texto de uma linha, no estilo da interface.
+// Single-line text field, in the UI style.
 static lv_obj_t *text_field(const char *initial)
 {
     lv_obj_t *ta = lv_textarea_create(s_content);
@@ -1633,11 +1633,11 @@ static lv_obj_t *text_field(const char *initial)
     return ta;
 }
 
-// Teclado próprio (letras, números, acentos) preso a um campo de texto. `on_ok` é
-// chamado quando a tecla de confirmar é tocada.
+// Custom keyboard (letters, digits, accents) bound to a text field. `on_ok` is
+// called when the confirm key is tapped.
 static void attach_keyboard(lv_obj_t *ta, lv_event_cb_t on_ok)
 {
-    // Teclado na largura total, colado embaixo, fora das margens do conteúdo.
+    // Full-width keyboard, docked at the bottom, outside the content margins.
     s_keyboard = lv_keyboard_create(s_root);
     lv_obj_add_flag(s_keyboard, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_size(s_keyboard, lv_pct(100), 390);
@@ -1648,7 +1648,7 @@ static void attach_keyboard(lv_obj_t *ta, lv_event_cb_t on_ok)
     lv_obj_set_style_radius(s_keyboard, 0, 0);
     lv_obj_set_style_pad_all(s_keyboard, 6, 0);
     lv_obj_set_style_pad_gap(s_keyboard, 6, 0);
-    // Letras (com acento) na Montserrat TTF; símbolos como apagar e OK caem na fonte do LVGL.
+    // Letters (accented too) use the Montserrat TTF; symbols like delete and OK fall back to the LVGL font.
     lv_font_t *key_font = (lv_font_t *)font(W_SEMIBOLD, 26);
     if (key_font != &lv_font_montserrat_20) key_font->fallback = &lv_font_montserrat_28;
     lv_obj_set_style_text_font(s_keyboard, key_font, LV_PART_ITEMS);
@@ -1658,10 +1658,10 @@ static void attach_keyboard(lv_obj_t *ta, lv_event_cb_t on_ok)
     lv_obj_set_style_radius(s_keyboard, 8, LV_PART_ITEMS);
     lv_obj_set_style_border_width(s_keyboard, 0, LV_PART_ITEMS);
     lv_obj_set_style_shadow_width(s_keyboard, 0, LV_PART_ITEMS);
-    // Retorno visual: a tecla tocada fica verde e mostra a letra ampliada acima do dedo.
+    // Visual feedback: the tapped key turns green and shows an enlarged letter above the finger.
     lv_obj_set_style_bg_color(s_keyboard, lv_color_hex(C_GREEN), LV_PART_ITEMS | LV_STATE_PRESSED);
     lv_obj_set_style_text_color(s_keyboard, lv_color_hex(C_WHITE), LV_PART_ITEMS | LV_STATE_PRESSED);
-    // Teclas de função (maiúsculas, apagar, modo, OK) num tom diferente das de caractere.
+    // Function keys (shift, delete, mode, OK) in a different shade from character keys.
     lv_obj_set_style_bg_color(s_keyboard, lv_color_hex(s_pal->key_fn), LV_PART_ITEMS | LV_STATE_CHECKED);
     lv_keyboard_set_map(s_keyboard, LV_KEYBOARD_MODE_TEXT_LOWER, kb_lower, kb_letters_ctrl);
     lv_keyboard_set_map(s_keyboard, LV_KEYBOARD_MODE_TEXT_UPPER, kb_upper, kb_letters_ctrl);
@@ -1680,7 +1680,7 @@ static void rename_save_cb(lv_event_t *e)
     if (!s_pass_ta || s_sel_rec >= s_rec_count) return;
     int id = s_recs[s_sel_rec].id;
     app_rename_recording(id, lv_textarea_get_text(s_pass_ta));
-    // O arquivo mudou de nome: reler a lista e voltar para a mesma gravação.
+    // The file was renamed: reload the list and return to the same recording.
     s_rec_count = app_list_recordings(s_recs, MAX_RECORDINGS);
     for (int i = 0; i < s_rec_count; i++) {
         if (s_recs[i].id == id) s_sel_rec = i;
@@ -1731,7 +1731,7 @@ static void build_hostname(void)
     attach_keyboard(s_pass_ta, hostname_save_cb);
 }
 
-// ---------- Tela genérica de um campo ----------
+// ---------- Generic single-field screen ----------
 
 typedef struct {
     const char *title, *info, *rule;
@@ -1739,7 +1739,7 @@ typedef struct {
     screen_t back;
 } edit_spec_t;
 
-// title, info e rule são chaves de texto (o idioma pode mudar com o aparelho ligado).
+// title, info and rule are text keys (the language can change while the device is on).
 static const edit_spec_t EDITS[] = {
     [EDIT_WEB_USER] = {"edit.web_user.title", "edit.web_user.info", "edit.web_user.rule", APP_WEB_USER_MAX, SCR_WEB},
     [EDIT_WEB_PASS] = {"edit.web_pass.title", "edit.web_pass.info", "edit.web_pass.rule", APP_WEB_PASS_MAX, SCR_WEB},
@@ -1811,7 +1811,7 @@ static void build_edit(void)
     attach_keyboard(s_pass_ta, edit_save_cb);
 }
 
-// ---------- Funções de desenvolvedor ----------
+// ---------- Developer functions ----------
 
 static void dev_switch_cb(lv_event_t *e)
 {
@@ -1847,7 +1847,7 @@ static void build_dev(void)
     label(s_content, ver, W_REGULAR, 14, C_MUTED);
 }
 
-// ---------- Rede própria (ponto de acesso) ----------
+// ---------- Own network (access point) ----------
 
 static void ap_switch_cb(lv_event_t *e)
 {
@@ -1863,7 +1863,7 @@ static void ap_clients_text(char *out, size_t len, int n)
     else snprintf(out, len, T("ap.clients.many"), n);
 }
 
-// Texto do QR de Wi-Fi: WIFI:T:WPA;S:<nome>;P:<senha>;; com \ antes de \ ; , : "
+// Wi-Fi QR text: WIFI:T:WPA;S:<name>;P:<password>;; with \ before \ ; , : "
 static void wifi_qr_escape(char *out, size_t len, const char *in)
 {
     size_t o = 0;
@@ -1900,7 +1900,7 @@ static void build_ap(void)
     net_ap_info_t info;
     net_ap_info(&info);
 
-    // Entrar na rede: nome e senha (toque para trocar) ao lado do QR para a câmera do celular.
+    // Join the network: name and password (tap to change) next to the QR for the phone camera.
     section(T("ap.join"));
     lv_obj_t *join = card(s_content, LV_FLEX_FLOW_ROW, 14);
     lv_obj_t *fields = box(join, LV_FLEX_FLOW_COLUMN, 12);
@@ -1983,7 +1983,7 @@ static void format_action(void)
     show(SCR_HOME);
 }
 
-// Cartão não reconhecido: confirmar antes de apagar, porque o aparelho não sabe o que há nele.
+// Unrecognized card: confirm before erasing, since the device doesn't know what's on it.
 static void format_unreadable_cb(lv_event_t *e)
 {
     (void)e;
@@ -2047,7 +2047,7 @@ static void build_card(void)
     button(s_content, T("card.format.button"), BTN_DANGER, LV_SYMBOL_TRASH, format_cb, NULL);
 }
 
-// ---------- Navegação ----------
+// ---------- Navigation ----------
 
 static void tab_cb(lv_event_t *e)
 {
@@ -2073,7 +2073,7 @@ static void show(screen_t s)
     s_home_space = s_rec_timer = s_rec_bar = s_rec_file = s_rec_gain = s_pass_ta = s_ap_clients = NULL;
     lv_obj_clean(s_content);
 
-    // Padrão: coluna alinhada no topo, rolável.
+    // Default: top-aligned, scrollable column.
     lv_obj_set_flex_align(s_content, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
     lv_obj_set_style_pad_row(s_content, 10, 0);
     lv_obj_add_flag(s_content, LV_OBJ_FLAG_SCROLLABLE);
@@ -2111,7 +2111,7 @@ static void show(screen_t s)
     }
 }
 
-// ---------- Tela apagada durante a gravação ----------
+// ---------- Screen off while recording ----------
 
 static void wake(void)
 {
@@ -2125,7 +2125,7 @@ static void wake(void)
 static void wake_cb(lv_event_t *e)
 {
     (void)e;
-    wake(); // o toque que acende a tela não aciona nada por baixo
+    wake(); // the tap that wakes the screen doesn't trigger anything underneath
 }
 
 static void lock_show(void);
@@ -2134,7 +2134,7 @@ static void sleep_screen(void)
 {
     display_backlight(false);
     s_screen_off = true;
-    if (app_lock_enabled()) lock_show(); // ao acender, pede o código
+    if (app_lock_enabled()) lock_show(); // on wake, ask for the PIN
     s_wake_overlay = box(s_root, LV_FLEX_FLOW_COLUMN, 0);
     lv_obj_add_flag(s_wake_overlay, LV_OBJ_FLAG_FLOATING);
     lv_obj_set_size(s_wake_overlay, lv_pct(100), lv_pct(100));
@@ -2142,7 +2142,7 @@ static void sleep_screen(void)
     lv_obj_add_event_cb(s_wake_overlay, wake_cb, LV_EVENT_PRESSED, NULL);
 }
 
-// ---------- Atualização periódica ----------
+// ---------- Periodic update ----------
 
 static bool home_web_changed(void)
 {
@@ -2157,7 +2157,7 @@ static void tick(lv_timer_t *t)
     app_status_t st;
     app_get_status(&st);
 
-    // Barra de status
+    // Status bar
     if (net_time_valid()) {
         time_t now = time(NULL);
         struct tm tmv;
@@ -2183,8 +2183,8 @@ static void tick(lv_timer_t *t)
     char lang[APP_LANG_MAX + 1];
     app_language(lang);
     if (strcmp(lang, i18n_current()) != 0) {
-        // Troca de idioma pedida (tela ou CONFIG.JSON): carrega e remonta tudo nos textos novos.
-        if (!i18n_set(lang)) app_set_language(i18n_current()); // arquivo sumiu ou com erro: fica no atual
+        // Language change requested (UI or CONFIG.JSON): load it and rebuild everything with the new texts.
+        if (!i18n_set(lang)) app_set_language(i18n_current()); // file missing or broken: keep the current one
         apply_theme();
         return;
     }
@@ -2193,7 +2193,7 @@ static void tick(lv_timer_t *t)
         return;
     }
 
-    // Eventos do núcleo
+    // Core events
     if (st.event_seq != s_seen_event_seq) {
         s_seen_event_seq = st.event_seq;
         if (st.event == APP_EVENT_SAVED) {
@@ -2208,11 +2208,11 @@ static void tick(lv_timer_t *t)
             s_notice_seconds = st.event_seconds;
             show(SCR_NOTICE);
         } else if (st.event == APP_EVENT_NO_CARD || st.event == APP_EVENT_CARD_BUSY) {
-            show(SCR_HOME); // a tela inicial mostra o aviso correspondente
+            show(SCR_HOME); // the home screen shows the matching notice
         }
     }
 
-    // Trocas de tela guiadas pelo estado
+    // State-driven screen changes
     if (st.recording && s_cur != SCR_REC) {
         show(SCR_REC);
     } else if (!st.recording && s_cur == SCR_REC) {
@@ -2228,7 +2228,7 @@ static void tick(lv_timer_t *t)
         bool done;
         int found = net_scan_results(s_aps, NET_MAX_APS, &done);
         if (done != s_wifi_scan_done || ns != s_wifi_state) {
-            // A varredura não funciona durante uma tentativa de conexão; refazer quando ela acaba.
+            // Scanning doesn't work during a connection attempt; redo it when that ends.
             if (s_wifi_state == NET_CONNECTING && ns != NET_CONNECTING && done && found == 0) net_scan_start();
             lv_obj_clean(s_content);
             build_wifi();
@@ -2237,7 +2237,7 @@ static void tick(lv_timer_t *t)
 
     if (s_cur == SCR_NET_INFO && ns != NET_CONNECTED) show(SCR_WIFI);
 
-    // Firmware novo chegando pelo Wi-Fi: avisa que o aparelho vai reiniciar.
+    // New firmware arriving over Wi-Fi: warn that the device will reboot.
     static bool update_shown;
     if (st.updating && !update_shown) {
         update_shown = true;
@@ -2247,11 +2247,11 @@ static void tick(lv_timer_t *t)
         update_shown = false;
     }
 
-    // Arquivo de configuração do cartão lido (aplicado ou com erro).
+    // Card config file was read (applied or with errors).
     config_notice_t cfg_kind;
     int cfg_ignored;
     if (!s_dialog && !s_keyboard && config_take_notice(&cfg_kind, &cfg_ignored)) {
-        if (s_cur == SCR_HOME || s_cur == SCR_SETTINGS || s_cur == SCR_WEB) show(s_cur); // valores novos na tela
+        if (s_cur == SCR_HOME || s_cur == SCR_SETTINGS || s_cur == SCR_WEB) show(s_cur); // show the new values on screen
         const char *cfg_title = T("config.title");
         char cfg_text[240];
         bool many = cfg_ignored > 1;
@@ -2273,7 +2273,7 @@ static void tick(lv_timer_t *t)
         dialog_ex(cfg_title, cfg_text, NULL, T("common.ok"), BTN_PRIMARY, NULL, NULL);
     }
 
-    // Falha de conexão: popup, uma vez, em qualquer tela.
+    // Connection failure: popup, once, on any screen.
     if (ns == NET_FAILED) {
         char ssid[33], text[120];
         net_current_ssid(ssid);
@@ -2288,7 +2288,7 @@ static void tick(lv_timer_t *t)
         s_user_connect = false;
     }
 
-    // Valores que mudam sem trocar de tela
+    // Values that change without switching screens
     if (s_cur == SCR_HOME && s_home_space) {
         char gb[16];
         fmt_gb(gb, sizeof(gb), st.free_mb);
@@ -2316,7 +2316,7 @@ static void tick(lv_timer_t *t)
         if (p == -2) app_set_updating(false);
     }
 
-    // Tela apagada durante a gravação
+    // Screen off while recording
     int to = app_screen_timeout_s();
     if (st.recording && to > 0 && !s_screen_off && lv_display_get_inactive_time(NULL) > (uint32_t)to * 1000) {
         sleep_screen();
@@ -2325,7 +2325,7 @@ static void tick(lv_timer_t *t)
     }
 }
 
-// ---------- Capturas para conferência ----------
+// ---------- Captures for review ----------
 
 #if UI_TOUR
 static void snapshot(const char *name)
@@ -2335,7 +2335,7 @@ static void snapshot(const char *name)
         printf("SNAP-ERRO %s\n", name);
         return;
     }
-    // Metade da resolução, para o envio pela serial ser rápido.
+    // Half resolution, so sending over serial is fast.
     int w = buf->header.w / 2, h = buf->header.h / 2;
     static const char b64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     printf("\nSNAP %s %d %d\n", name, w, h);
@@ -2385,8 +2385,8 @@ static void tour_step(const char *name, screen_t s, void (*after)(void))
 
 static void tour_toast(void)
 {
-    strlcpy(s_toast_title, "Gravação salva · 12:51", sizeof(s_toast_title));
-    strlcpy(s_toast_sub, "REC_0023.WAV no cartão", sizeof(s_toast_sub));
+    strlcpy(s_toast_title, "Recording saved · 12:51", sizeof(s_toast_title));
+    strlcpy(s_toast_sub, "REC_0023.WAV on the card", sizeof(s_toast_sub));
     lv_obj_clean(s_content);
     build_home();
 }
@@ -2399,7 +2399,7 @@ static void tour_no_card(void) { lv_obj_clean(s_content); notice(NOTICE_NO_CARD)
 
 static void tour_task(void *arg)
 {
-    vTaskDelay(pdMS_TO_TICKS(7000)); // deixa a rede subir
+    vTaskDelay(pdMS_TO_TICKS(7000)); // let the network come up
     s_tour = true;
     strlcpy(s_sel_ssid, "MinhaRede", sizeof(s_sel_ssid));
     tour_step("01-inicio", SCR_HOME, NULL);
@@ -2427,14 +2427,14 @@ static void tour_task(void *arg)
 }
 #endif
 
-// ---------- Captura pela web ----------
+// ---------- Web capture ----------
 
 static bool screen_by_name(const char *name)
 {
     static const struct {
         const char *name;
         screen_t s;
-        int edit; // -1: não é SCR_EDIT
+        int edit; // -1: not SCR_EDIT
     } MAP[] = {
         {"inicio", SCR_HOME, -1},       {"gravacoes", SCR_LIST, -1},
         {"ajustes", SCR_SETTINGS, -1},  {"wifi", SCR_WIFI, -1},
@@ -2488,12 +2488,12 @@ bool ui_capture_bmp(const char *screen, uint8_t **bmp, size_t *len)
             v = row * h; memcpy(out + 34, &v, 4);
             for (int y = 0; y < h; y++) {
                 const uint8_t *src = buf->data + (size_t)y * buf->header.stride;
-                uint8_t *dst = out + 54 + (size_t)(h - 1 - y) * row; // BMP guarda de baixo para cima
+                uint8_t *dst = out + 54 + (size_t)(h - 1 - y) * row; // BMP stores rows bottom-up
                 for (int x = 0; x < w; x++) {
                     uint16_t px = src[x * 2] | src[x * 2 + 1] << 8;
-                    dst[x * 3] = (px & 0x1F) << 3;              // azul
-                    dst[x * 3 + 1] = ((px >> 5) & 0x3F) << 2;   // verde
-                    dst[x * 3 + 2] = ((px >> 11) & 0x1F) << 3;  // vermelho
+                    dst[x * 3] = (px & 0x1F) << 3;              // blue
+                    dst[x * 3 + 1] = ((px >> 5) & 0x3F) << 2;   // green
+                    dst[x * 3 + 2] = ((px >> 11) & 0x1F) << 3;  // red
                 }
             }
             *bmp = out;
@@ -2506,9 +2506,9 @@ bool ui_capture_bmp(const char *screen, uint8_t **bmp, size_t *len)
     return ok;
 }
 
-// ---------- Inicialização ----------
+// ---------- Initialization ----------
 
-// Barra de status, área de conteúdo e abas, nas cores do tema atual.
+// Status bar, content area and tabs, in the current theme's colors.
 static void build_chrome(void)
 {
     s_pal = app_theme() ? &PAL_LIGHT : &PAL_DARK;
@@ -2529,7 +2529,7 @@ static void build_chrome(void)
     s_clock = label(status, "--:--", W_SEMIBOLD, 16, C_MUTED);
     lv_obj_t *icons = box(status, LV_FLEX_FLOW_ROW, 10);
     cross_center(icons);
-    s_ap_icon = label(icons, "AP", W_BOLD, 14, C_GREEN); // rede própria ligada
+    s_ap_icon = label(icons, "AP", W_BOLD, 14, C_GREEN); // own network enabled
     lv_obj_add_flag(s_ap_icon, LV_OBJ_FLAG_HIDDEN);
     s_wifi_icon = symbol(icons, LV_SYMBOL_WIFI, 20, C_SURF2);
 
@@ -2542,7 +2542,7 @@ static void build_chrome(void)
     lv_obj_set_size(s_tabs, lv_pct(100), 76);
     bg(s_tabs, C_SURF, LV_OPA_COVER, 0);
     static const struct { const char *name; const char *sym; screen_t scr; } tabs[3] = {
-        {"tab.home", LV_SYMBOL_HOME, SCR_HOME}, // chaves de texto
+        {"tab.home", LV_SYMBOL_HOME, SCR_HOME}, // text keys
         {"list.title", LV_SYMBOL_LIST, SCR_LIST},
         {"settings.title", LV_SYMBOL_SETTINGS, SCR_SETTINGS},
     };
@@ -2559,10 +2559,10 @@ static void build_chrome(void)
 
 }
 
-// Troca de tema: apaga tudo e remonta, voltando à mesma tela.
+// Theme change: clear everything and rebuild, returning to the same screen.
 static void apply_theme(void)
 {
-    s_dialog = NULL;   // os objetos somem com a limpeza abaixo
+    s_dialog = NULL;   // the objects go away with the cleanup below
     s_keyboard = NULL;
     s_wake_overlay = NULL;
     s_screen_off = false;
@@ -2587,7 +2587,7 @@ void ui_init(void)
     app_get_status(&st);
     s_seen_event_seq = st.event_seq;
     show(SCR_HOME);
-    if (app_lock_enabled()) lock_show(); // ligou: pede o código
+    if (app_lock_enabled()) lock_show(); // enabled: ask for the PIN
     lv_timer_create(tick, 200, NULL);
 
     display_unlock();

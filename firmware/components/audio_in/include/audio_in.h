@@ -1,4 +1,4 @@
-// Entrada de áudio pelo codec ES8311 da Guition JC4880P443C. Mono, 16 bits.
+// Audio input via the ES8311 codec of the Guition JC4880P443C. Mono, 16-bit.
 #pragma once
 
 #include <stddef.h>
@@ -12,5 +12,5 @@ esp_err_t audio_in_init(uint32_t sample_rate_hz);
 
 esp_err_t audio_in_set_gain_db(float db);
 
-// Bloqueia até ler `n` amostras. Devolve o número lido ou um valor negativo em erro.
+// Blocks until `n` samples are read. Returns the number read, or a negative value on error.
 int audio_in_read(int16_t *samples, size_t n);

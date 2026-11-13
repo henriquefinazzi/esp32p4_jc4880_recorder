@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Compila e envia o firmware ao gravador pelo Wi-Fi (sem cabo).
-#   tools/ota.sh [nome-na-rede]        ex.: tools/ota.sh p4recorder
-# Pede a senha do acesso pelo navegador. Usuário: RECORDER_USER (padrão "recorder").
-# Para não digitar a senha: RECORDER_NETRC=<arquivo .netrc com "machine <nome>.local login ... password ...">.
-# Só compilar ou só enviar: SKIP_BUILD=1 tools/ota.sh
+# Builds and sends the firmware to the recorder over Wi-Fi (no cable).
+#   tools/ota.sh [network-name]        e.g.: tools/ota.sh p4recorder
+# Asks for the browser access password. User: RECORDER_USER (default "recorder").
+# To avoid typing the password: RECORDER_NETRC=<.netrc file with "machine <name>.local login ... password ...">.
+# Send only, without building: SKIP_BUILD=1 tools/ota.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 HOST="${1:-p4recorder}.local"
@@ -13,7 +13,7 @@ BIN="${PLATFORMIO_WORKSPACE_DIR:-.pio}/build/esp32p4/firmware.bin"
 if [ -z "${SKIP_BUILD:-}" ]; then
   "$PIO" run
 fi
-[ -f "$BIN" ] || { echo "firmware.bin não encontrado em $BIN" >&2; exit 1; }
+[ -f "$BIN" ] || { echo "firmware.bin not found at $BIN" >&2; exit 1; }
 
 if [ -n "${RECORDER_NETRC:-}" ]; then
   AUTH=(--netrc-file "$RECORDER_NETRC")
@@ -21,8 +21,8 @@ else
   AUTH=(-u "${RECORDER_USER:-recorder}")
 fi
 
-echo "Enviando $(du -h "$BIN" | cut -f1) para http://$HOST ..."
+echo "Sending $(du -h "$BIN" | cut -f1) to http://$HOST ..."
 curl --fail-with-body -sS "${AUTH[@]}" -H "Content-Type: application/octet-stream" \
   --data-binary @"$BIN" "http://$HOST/api/firmware"
 echo
-echo "Enviado. O gravador reinicia em alguns segundos."
+echo "Sent. The recorder restarts in a few seconds."

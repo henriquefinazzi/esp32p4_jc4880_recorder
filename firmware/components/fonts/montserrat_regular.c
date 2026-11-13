@@ -1,4 +1,4 @@
-// Montserrat Regular (SIL Open Font License 1.1, https://github.com/JulietaUla/Montserrat). Gerado, não editar.
+// Montserrat Regular (SIL Open Font License 1.1, https://github.com/JulietaUla/Montserrat). Generated, do not edit.
 #include <stddef.h>
 #include <stdint.h>
 const uint8_t montserrat_regular_ttf[] = {

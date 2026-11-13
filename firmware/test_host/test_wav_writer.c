@@ -1,4 +1,4 @@
-// Testes do wav_writer rodando no Mac (sem ESP-IDF).
+// wav_writer tests running on the Mac (no ESP-IDF).
 #include "wav_writer.h"
 
 #include <stdint.h>
@@ -12,7 +12,7 @@ static int failures = 0;
 #define CHECK(cond)                                                        \
     do {                                                                   \
         if (!(cond)) {                                                     \
-            fprintf(stderr, "FALHOU %s:%d: %s\n", __func__, __LINE__, #cond); \
+            fprintf(stderr, "FAILED %s:%d: %s\n", __func__, __LINE__, #cond); \
             failures++;                                                    \
         }                                                                  \
     } while (0)
@@ -88,7 +88,7 @@ static void test_checkpoint_survives_power_loss(void)
     CHECK(wav_writer_write(w, zeros, 16000) == 0);
     CHECK(wav_writer_checkpoint(w) == 0);
     CHECK(wav_writer_write(w, zeros, 8000) == 0);
-    // Sem close: simula a queda de energia. O cabeçalho no disco reflete o checkpoint.
+    // No close: simulates a power loss. The header on disk reflects the checkpoint.
     CHECK(read_file(path, h, sizeof(h)) >= 16044);
     CHECK(u32le(h + 40) == 16000);
     CHECK(u32le(h + 4) == 16036);
@@ -123,7 +123,7 @@ static void test_close_after_failed_write_keeps_valid_header(void)
     wav_writer_t *w = wav_writer_open(path, 16000, 1, 16);
     CHECK(w != NULL);
     CHECK(wav_writer_write(w, zeros, 1000) == 0);
-    // Escrita impossível (passaria do limite de 4 GiB do WAV): erro, nada muda.
+    // Impossible write (would exceed the WAV 4 GiB limit): error, nothing changes.
     CHECK(wav_writer_write(w, zeros, SIZE_MAX) < 0);
     CHECK(wav_writer_data_bytes(w) == 1000);
     CHECK(wav_writer_close(w) == 0);
@@ -154,9 +154,9 @@ int main(void)
     test_close_after_failed_write_keeps_valid_header();
     test_data_bytes();
     if (failures) {
-        fprintf(stderr, "%d verificacao(oes) falharam\n", failures);
+        fprintf(stderr, "%d check(s) failed\n", failures);
         return 1;
     }
-    printf("todos os testes passaram\n");
+    printf("all tests passed\n");
     return 0;
 }

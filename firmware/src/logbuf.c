@@ -11,7 +11,7 @@
 #define LOGBUF_SIZE (16 * 1024)
 
 static char *s_buf;
-static size_t s_head;  // próxima posição de escrita
+static size_t s_head;  // next write position
 static bool s_wrapped;
 static vprintf_like_t s_orig;
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
