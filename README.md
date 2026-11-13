@@ -47,6 +47,17 @@ port, used in USB drive mode.
 > The firmware was developed and tested on a board with ESP32-P4 **revision 1.3**. That is why
 > `esp_audio_codec` is pinned to version 2.5.x: 2.6 and later require revision 3.0 or newer.
 
+## Download
+
+A ready-to-flash image is attached to each [release](https://github.com/henriquefinazzi/esp32p4_jc4880_recorder/releases).
+Flash it at offset 0x0 through the console USB-C port:
+
+```bash
+esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
+```
+
+The full image erases the device's saved settings; recordings on the SD-Card are kept.
+
 ## Build and flash
 
 Requirements: [PlatformIO](https://platformio.org/) (the project uses the

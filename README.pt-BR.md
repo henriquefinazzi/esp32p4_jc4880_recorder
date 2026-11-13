@@ -46,6 +46,17 @@ modo pendrive.
 > O firmware foi desenvolvido e testado numa placa com ESP32-P4 **revisão 1.3**. Por isso o
 > `esp_audio_codec` está fixado na versão 2.5.x: a 2.6 em diante exige a revisão 3.0 ou superior.
 
+## Baixar
+
+Cada [versão publicada](https://github.com/henriquefinazzi/esp32p4_jc4880_recorder/releases) traz uma imagem pronta
+para gravar. Grave no endereço 0x0 pela USB-C de console:
+
+```bash
+esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
+```
+
+A imagem completa apaga as configurações salvas no aparelho; as gravações no Cartão-SD são mantidas.
+
 ## Compilar e gravar
 
 Requisitos: [PlatformIO](https://platformio.org/) (o projeto usa a plataforma
