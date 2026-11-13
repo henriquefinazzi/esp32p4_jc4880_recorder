@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * Modified 2026 for the P4 Recorder project (esp32p4-jc4880-recorder): honor mount_config.format_if_mount_failed
- * (never auto-format) and add tinyusb_msc_storage_unformatted(). See LEIA-PATCH.md.
+ * (never auto-format) and add tinyusb_msc_storage_unformatted(). See PATCH.md.
  */
 
 #pragma once
@@ -189,7 +189,7 @@ uint32_t tinyusb_msc_storage_get_sector_size(void);
 bool tinyusb_msc_storage_in_use_by_usb_host(void);
 
 // P4 Recorder: true se a última tentativa de montar falhou por falta de sistema de arquivos
-// legível (o cartão não foi formatado; ver LEIA-PATCH.md).
+// legível (o cartão não foi formatado; ver PATCH.md).
 bool tinyusb_msc_storage_unformatted(void);
 
 #ifdef __cplusplus

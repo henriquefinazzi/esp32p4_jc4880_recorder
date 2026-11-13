@@ -1,20 +1,20 @@
-# Avisos de terceiros / Third-party notices
+# Third-party notices
 
-O código próprio do projeto está sob a licença MIT ([LICENSE](LICENSE)). Os itens abaixo são de terceiros
-e mantêm as licenças deles; a licença MIT não se aplica a eles.
+This project's own code is under the MIT license ([LICENSE](LICENSE)). The items below are third-party
+and keep their own licenses; the MIT license does not apply to them.
 
-## Incluídos neste repositório
+## Included in this repository
 
-| Componente | Onde | Licença | Texto da licença |
+| Component | Location | License | License text |
 |---|---|---|---|
-| Shine (codificador MP3), © autores do Shine (Gabriel Bouvigne, Pete Everett, Romain Beauxis e outros), <https://github.com/toots/shine>, sem alterações | `firmware/components/shine/` | LGPL-2.0-only (GNU Library General Public License v2) | `firmware/components/shine/COPYING` |
-| esp_tinyusb 1.7.6~2, © Espressif Systems, <https://github.com/espressif/esp-usb>, **modificado** (ver `LEIA-PATCH.md`) | `firmware/components/espressif__esp_tinyusb/` | Apache-2.0 | `firmware/components/espressif__esp_tinyusb/LICENSE` |
-| `tusb_config.h` dentro do esp_tinyusb, © 2019 Ha Thach (tinyusb.org) | idem | MIT | abaixo |
-| Fonte Montserrat, © 2011 The Montserrat Project Authors, <https://github.com/JulietaUla/Montserrat> | `firmware/components/fonts/` | SIL OFL 1.1 | `firmware/components/fonts/OFL.txt` |
-| Sequência de inicialização do painel ST7701S, do BSP <https://github.com/ultramcu/guition-jc4880p4-bsp>, © 2026 ultramcu | `firmware/components/display/st7701_init.h` | MIT | `licenses/LICENSE-ultramcu-guition-bsp.txt` |
-| Firmware do ESP32-C6 (binário), compilado de esp-hosted-mcu 2.12.13 (<https://github.com/espressif/esp-hosted-mcu>) com ESP-IDF 5.5.5 | `firmware/c6/network_adapter_esp32c6.bin` | Apache-2.0 (esp-hosted, ESP-IDF, bibliotecas Wi-Fi/PHY da Espressif); inclui também FreeRTOS (MIT), wpa_supplicant (BSD-3-Clause), mbedTLS (Apache-2.0), protobuf-c (BSD-2-Clause), newlib (licenças BSD) e a biblioteca do controlador BLE da Espressif, derivada do Apache Mynewt NimBLE (Apache-2.0, ver NOTICE) | `licenses/LICENSE-Apache-2.0.txt`, `licenses/NOTICE-esp32c6-bt-lib.txt` e a lista de direitos autorais do ESP-IDF: <https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c6/COPYRIGHT.html> |
+| Shine (MP3 encoder), © the Shine authors (Gabriel Bouvigne, Pete Everett, Romain Beauxis and others), <https://github.com/toots/shine>, unmodified | `firmware/components/shine/` | LGPL-2.0-only (GNU Library General Public License v2) | `firmware/components/shine/COPYING` |
+| esp_tinyusb 1.7.6~2, © Espressif Systems, <https://github.com/espressif/esp-usb>, **modified** (see `PATCH.md`) | `firmware/components/espressif__esp_tinyusb/` | Apache-2.0 | `firmware/components/espressif__esp_tinyusb/LICENSE` |
+| `tusb_config.h` inside esp_tinyusb, © 2019 Ha Thach (tinyusb.org) | same as above | MIT | below |
+| Montserrat font, © 2011 The Montserrat Project Authors, <https://github.com/JulietaUla/Montserrat> | `firmware/components/fonts/` | SIL OFL 1.1 | `firmware/components/fonts/OFL.txt` |
+| ST7701S panel initialization sequence, from the BSP <https://github.com/ultramcu/guition-jc4880p4-bsp>, © 2026 ultramcu | `firmware/components/display/st7701_init.h` | MIT | `licenses/LICENSE-ultramcu-guition-bsp.txt` |
+| ESP32-C6 firmware (binary), built from esp-hosted-mcu 2.12.13 (<https://github.com/espressif/esp-hosted-mcu>) with ESP-IDF 5.5.5 | `firmware/c6/network_adapter_esp32c6.bin` | Apache-2.0 (esp-hosted, ESP-IDF, Espressif Wi-Fi/PHY libraries); also includes FreeRTOS (MIT), wpa_supplicant (BSD-3-Clause), mbedTLS (Apache-2.0), protobuf-c (BSD-2-Clause), newlib (BSD licenses) and Espressif's BLE controller library, derived from Apache Mynewt NimBLE (Apache-2.0, see NOTICE) | `licenses/LICENSE-Apache-2.0.txt`, `licenses/NOTICE-esp32c6-bt-lib.txt` and the ESP-IDF copyright list: <https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c6/COPYRIGHT.html> |
 
-### Licença MIT do TinyUSB (`tusb_config.h`)
+### TinyUSB MIT license (`tusb_config.h`)
 
 ```
 The MIT License (MIT)
@@ -40,33 +40,33 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 ```
 
-## Baixados na compilação (não estão no repositório)
+## Downloaded at build time (not in the repository)
 
-O PlatformIO e o gerenciador de componentes do ESP-IDF baixam, entre outros:
+PlatformIO and the ESP-IDF component manager download, among others:
 
-- **ESP-IDF** e componentes da Espressif (esp_hosted, esp_wifi_remote, esp_lvgl_port, esp_lcd_touch,
+- **ESP-IDF** and Espressif components (esp_hosted, esp_wifi_remote, esp_lvgl_port, esp_lcd_touch,
   esp_lcd_touch_gt911, esp_codec_dev, mdns, eppp_link, esp_serial_slave_link, wifi_remote_over_eppp):
-  Apache-2.0. Dentro do ESP-IDF: lwIP (BSD-3), mbedTLS (Apache-2.0), protobuf-c (BSD-2), FreeRTOS (MIT).
+  Apache-2.0. Inside ESP-IDF: lwIP (BSD-3), mbedTLS (Apache-2.0), protobuf-c (BSD-2), FreeRTOS (MIT).
 - **LVGL**: MIT. **TinyUSB**: MIT. **cJSON**: MIT.
-- **esp_audio_codec** (Espressif), usado no Opus: licença *Espressif Modified MIT*, que permite o uso
-  **apenas com produtos da Espressif**. Inclui a libopus (BSD-3).
+- **esp_audio_codec** (Espressif), used for Opus: *Espressif Modified MIT* license, which allows use
+  **only with Espressif products**. Includes libopus (BSD-3).
 
-## Ao distribuir um firmware compilado
+## When distributing a compiled firmware
 
-O firmware compilado contém o Shine, sob LGPL-2.0-only, ligado estaticamente. Quem distribuir o `firmware.bin`
-(por exemplo, como arquivo de uma versão no GitHub ou gravado num aparelho) deve:
+The compiled firmware contains Shine, under LGPL-2.0-only, statically linked. Anyone distributing
+`firmware.bin` (for example, as a GitHub release asset or flashed onto a device) must:
 
-1. avisar que o firmware contém o Shine sob a LGPL e incluir o texto da licença (`COPYING`);
-2. permitir que o usuário modifique o Shine e gere de novo o firmware. Num *release* do GitHub, basta
-   publicar o binário junto à tag/commit exato do código-fonte deste repositório (que inclui o Shine e o
-   `dependencies.lock`) e às instruções de compilação (`pio run`) — LGPL §6(d). Num aparelho entregue a
-   alguém, entregue junto o código-fonte daquela versão (por exemplo, um .zip da tag) ou uma oferta por
-   escrito, válida por pelo menos 3 anos, de fornecê-lo — LGPL §6(a)/(c). Não impeça a modificação nem a
-   engenharia reversa para depurar essas modificações;
-3. incluir estes avisos e os textos das licenças: MIT (este projeto, ultramcu, TinyUSB, LVGL, cJSON,
+1. state that the firmware contains Shine under the LGPL and include the license text (`COPYING`);
+2. allow the user to modify Shine and rebuild the firmware. For a GitHub *release*, it is enough to
+   publish the binary together with the exact tag/commit of this repository's source code (which includes
+   Shine and `dependencies.lock`) and the build instructions (`pio run`) — LGPL §6(d). For a device given
+   to someone, include the source code of that version (for example, a .zip of the tag) or a written offer,
+   valid for at least 3 years, to provide it — LGPL §6(a)/(c). Do not prevent modification or reverse
+   engineering for debugging such modifications;
+3. include these notices and the license texts: MIT (this project, ultramcu, TinyUSB, LVGL, cJSON,
    FreeRTOS), Apache-2.0 (ESP-IDF, esp_hosted, esp_tinyusb, mbedTLS, mdns, esp_lcd_touch), BSD-3 (lwIP,
-   libopus, wpa_supplicant), BSD-2 (protobuf-c), *Espressif Modified MIT* (esp_audio_codec — arquivo
-   `LICENSE` do componente), OFL 1.1 (Montserrat), LGPL-2.0 (Shine) e o NOTICE do NimBLE; a lista completa
-   do ESP-IDF está em <https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32p4/COPYRIGHT.html>.
-   Na prática: anexe a cada *release* um `licenses.zip` com esses textos (estão em
-   `firmware/managed_components/*/LICENSE*` depois da primeira compilação e na página acima).
+   libopus, wpa_supplicant), BSD-2 (protobuf-c), *Espressif Modified MIT* (esp_audio_codec — the
+   component's `LICENSE` file), OFL 1.1 (Montserrat), LGPL-2.0 (Shine) and the NimBLE NOTICE; the full
+   ESP-IDF list is at <https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32p4/COPYRIGHT.html>.
+   In practice: attach to each *release* a `licenses.zip` with these texts (they are in
+   `firmware/managed_components/*/LICENSE*` after the first build and on the page above).

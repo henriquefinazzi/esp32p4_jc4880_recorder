@@ -1,100 +1,105 @@
+**English** · [Português](README.pt-BR.md)
+
 # esp32p4-jc4880-recorder (P4 Recorder)
 
-Gravador de reuniões portátil com tela de toque, feito sobre a placa **Guition JC4880P443C_I_W_Y**
-(ESP32-P4 + ESP32-C6, tela de 4,3"). Grava no cartão microSD em WAV, Opus ou MP3, mostra as
-gravações numa página web na rede local e funciona como pendrive pela USB.
+Portable meeting recorder with a touchscreen, built on the **Guition JC4880P443C_I_W_Y** board
+(ESP32-P4 + ESP32-C6, 4.3" display). It records to microSD as WAV, Opus or MP3, shows the recordings
+on a web page on the local network and works as a USB drive.
 
-*English summary below.*
+## What it does
 
-## O que ele faz
-
-- **Gravação** com um toque (ou pelo botão BOOT), com nível de áudio, ganho ajustável durante a
-  gravação e tela que apaga sozinha para economizar energia.
-- **Formatos:** WAV (sem compressão, ~115 MB/h), Opus (~11 MB/h) ou MP3 (~14 MB/h).
-- **Filtro de ruído grave** (passa-altas de 100 Hz) contra zumbido de ar-condicionado e batidas na mesa.
-- **Proteção contra queda de energia:** o arquivo é fechado a cada 2 s; uma queda perde no máximo isso.
-- **Lista de gravações** no aparelho: ver os dados, renomear, apagar uma ou várias.
-- **Cartão cheio:** opção de apagar as gravações mais antigas automaticamente.
-- **Página web** na rede local (`http://<nome>.local`): ouvir, baixar, renomear e apagar gravações,
-  com usuário e senha. Cinco senhas erradas bloqueiam o endereço por 5 minutos.
-- **Rede própria (ponto de acesso):** o gravador cria uma rede Wi-Fi para o celular se conectar direto,
-  sem roteador, com QR code para entrar.
-- **Modo pendrive:** pela USB de alta velocidade, o cartão aparece no computador. Ao ejetar, volta ao aparelho.
-- **Configurações no cartão:** um arquivo `CONFIG.JSON` (oculto) espelha todas as configurações e pode
-  ser editado no computador; o aparelho aplica as mudanças quando o cartão volta.
-- **Atualização de firmware pelo Wi-Fi**, pela página ou por linha de comando, com volta automática à
-  versão anterior se a nova não iniciar. O chip de Wi-Fi (ESP32-C6) também é atualizado pelo aparelho.
-- **Bloqueio de tela** com código numérico e **tema claro/escuro**.
-- **Idiomas:** português e inglês embutidos; outros idiomas por arquivo no cartão, sem recompilar.
-- **Hora** pela internet (servidor NTP configurável) ou pelo navegador, quando não há internet.
-- Cartões em formato não reconhecido (exFAT, NTFS) **nunca são formatados sem confirmação**.
+- **One-tap recording** (or with the BOOT button), with an audio level meter, gain that can be adjusted
+  while recording, and a screen that turns itself off to save power.
+- **Formats:** WAV (uncompressed, ~115 MB/h), Opus (~11 MB/h) or MP3 (~14 MB/h).
+- **Low-frequency noise filter** (100 Hz high-pass) against air-conditioning hum and knocks on the table.
+- **Power-loss protection:** the file is closed every 2 s; a power cut loses at most that much.
+- **Recording list** on the device: view details, rename, delete one or several.
+- **Full card:** option to delete the oldest recordings automatically.
+- **Web page** on the local network (`http://<name>.local`): play, download, rename and delete recordings,
+  protected by a username and password. Five wrong passwords block the address for 5 minutes.
+- **Own network (access point):** the recorder creates a Wi-Fi network so a phone can connect directly,
+  without a router, with a QR code to join.
+- **USB drive mode:** over the high-speed USB port, the card shows up on the computer. When ejected, it goes
+  back to the device.
+- **Settings on the card:** a hidden `CONFIG.JSON` file mirrors all settings and can be edited on a
+  computer; the device applies the changes when the card comes back.
+- **Firmware updates over Wi-Fi**, from the web page or the command line, with automatic rollback to the
+  previous version if the new one fails to boot. The Wi-Fi chip (ESP32-C6) is also updated by the device.
+- **Screen lock** with a numeric code and **light/dark theme**.
+- **Languages:** English and Portuguese built in (the device starts in English); other languages can be
+  added as files on the card, without rebuilding.
+- **Time** from the internet (configurable NTP server) or from the browser when there is no internet.
+- Cards in an unrecognized format (exFAT, NTFS) are **never formatted without confirmation**.
 
 ## Hardware
 
-| Item | Detalhe |
+| Item | Detail |
 |---|---|
-| Placa | Guition JC4880P443C_I_W_Y (ESP32-P4 com 32 MB de PSRAM e 16 MB de flash; ESP32-C6 para Wi-Fi) |
-| Tela | 4,3", 480 x 800, MIPI-DSI (ST7701S), toque GT911 |
-| Áudio | Codec ES8311 com microfone na placa |
-| Armazenamento | microSD (FAT32) |
-| Energia | USB-C, ou bateria de lítio pelo conector da placa (carga pelo IP5306) |
+| Board | Guition JC4880P443C_I_W_Y (ESP32-P4 with 32 MB PSRAM and 16 MB flash; ESP32-C6 for Wi-Fi) |
+| Display | 4.3", 480 x 800, MIPI-DSI (ST7701S), GT911 touch |
+| Audio | ES8311 codec with on-board microphone |
+| Storage | microSD (FAT32) |
+| Power | USB-C, or a lithium battery on the board connector (charged by the IP5306) |
 
-A placa tem duas USB-C: a de **gravação/console** (USB Serial/JTAG) e a de **alta velocidade**, usada no
-modo pendrive.
+The board has two USB-C ports: the **flashing/console** port (USB Serial/JTAG) and the **high-speed**
+port, used in USB drive mode.
 
-> O firmware foi desenvolvido e testado numa placa com ESP32-P4 **revisão 1.3**. Por isso o
-> `esp_audio_codec` está fixado na versão 2.5.x: a 2.6 em diante exige a revisão 3.0 ou superior.
+> The firmware was developed and tested on a board with ESP32-P4 **revision 1.3**. That is why
+> `esp_audio_codec` is pinned to version 2.5.x: 2.6 and later require revision 3.0 or newer.
 
-## Compilar e gravar
+## Build and flash
 
-Requisitos: [PlatformIO](https://platformio.org/) (o projeto usa a plataforma
-[pioarduino](https://github.com/pioarduino/platform-espressif32) com ESP-IDF 5.5).
+Requirements: [PlatformIO](https://platformio.org/) (the project uses the
+[pioarduino](https://github.com/pioarduino/platform-espressif32) platform with ESP-IDF 5.5).
 
 ```bash
 cd firmware
-pio run                                   # compila
-pio run -t upload --upload-port <porta>   # grava pela USB de console (primeira vez)
+pio run                                   # build
+pio run -t upload --upload-port <port>    # flash over the console USB (first time)
 ```
 
-Para guardar os arquivos de compilação fora da pasta do projeto, defina `PLATFORMIO_WORKSPACE_DIR`.
+To keep build files outside the project folder, set `PLATFORMIO_WORKSPACE_DIR`.
 
-A primeira gravação precisa ser pela USB, porque ela também grava a tabela de partições com as duas
-áreas de firmware. Depois disso, as atualizações podem ser pelo Wi-Fi:
+The first flash must be over USB, because it also writes the partition table with the two firmware
+slots. After that, updates can go over Wi-Fi:
 
 ```bash
-firmware/tools/ota.sh <nome-na-rede>      # compila e envia; pede a senha do navegador
+firmware/tools/ota.sh <hostname>          # builds and uploads; asks for the browser password
 ```
 
-Ou pela página web do gravador, em **Firmware → Atualizar firmware…** (aparece com as funções de
-desenvolvedor ligadas, em Ajustes → Desenvolvedor).
+You can also use the recorder's web page, under **Firmware → Update firmware…** (shown when developer
+functions are turned on, in Settings → Developer).
 
-## Primeiro uso
+## First use
 
-1. Coloque um microSD em FAT32 (se estiver em outro formato, o aparelho oferece formatar).
-2. Em **Ajustes → Wi-Fi**, escolha a rede e digite a senha (só redes de 2,4 GHz).
-3. Em **Ajustes → Acesso pelo navegador** aparecem o endereço (de fábrica, `http://p4recorder.local`),
-   o usuário (`recorder`) e a senha (sorteada na primeira vez). Abra o endereço num computador ou
-   celular na mesma rede. Sem roteador, ligue a **rede própria** (`P4Recorder-XXXX`) e abra
-   `http://192.168.4.1`.
+1. Insert a FAT32 microSD card (if it uses another format, the device offers to format it).
+2. In **Settings → Wi-Fi**, pick the network and type the password (2.4 GHz networks only).
+3. **Settings → Browser access** shows the address (by default `http://p4recorder.local`), the
+   username (`recorder`) and the password (randomly generated on first boot). Open the address on a
+   computer or phone on the same network. Without a router, turn on the **own network**
+   (`P4Recorder-XXXX`) and open `http://192.168.4.1`.
 
-## Configurações pelo cartão
+## Settings on the card
 
-O arquivo `CONFIG.JSON`, na raiz do cartão, tem todas as configurações, inclusive senhas de Wi-Fi.
-Edite no computador e ejete o cartão: o aparelho aplica o que mudou e mostra um aviso. Valores
-inválidos são ignorados e o arquivo é regravado com os valores em uso. Trate o cartão como algo que
-contém senhas.
+The `CONFIG.JSON` file, in the root of the card, holds every setting, including Wi-Fi passwords.
+Edit it on a computer and eject the card: the device applies what changed and shows a notice. Invalid
+values are ignored and the file is rewritten with the values in use. The keys are in Portuguese (for
+example `"aparelho"`, `"navegador"`) and are kept that way for compatibility. Treat the card as
+something that contains passwords.
 
-## Idiomas
+## Languages
 
-Os textos ficam em `firmware/lang/pt.json` e `firmware/lang/en.json` (chave → texto). Para outro idioma,
-copie um deles, troque `_codigo` e `_nome`, traduza e coloque no cartão como `IDIOMAS/<codigo>.json`.
-Ele aparece em **Ajustes → Idioma**. Textos que faltarem saem em português.
+The device starts in English. English and Portuguese are built in; their texts live in
+`firmware/lang/en.json` and `firmware/lang/pt.json` (key → text). To add another language, copy one of
+them, change `_codigo` (language code) and `_nome` (language name), translate it and put it on the card
+as `LANGUAGES/<code>.json` (i.e. `/sdcard/LANGUAGES/<code>.json`). It shows up in **Settings → Language**.
+Missing texts fall back to English.
 
-## Testes
+## Tests
 
-Partes em C puro (escrita de WAV, empacotamento Ogg Opus, MP3, filtro de áudio, leitura do
-`CONFIG.JSON`) têm testes que rodam no computador. Precisam de CMake, `libopus`, `ffmpeg` e do ESP-IDF
-instalado pelo PlatformIO (o cJSON vem de lá; outro caminho pode ser dado com `-DCJSON_DIR=...`):
+The plain-C parts (WAV writer, Ogg Opus packaging, MP3, audio filter, `CONFIG.JSON` parsing) have tests
+that run on the computer. They need CMake, `libopus`, `ffmpeg` and the ESP-IDF installed by PlatformIO
+(cJSON comes from there; another path can be given with `-DCJSON_DIR=...`):
 
 ```bash
 cmake -S firmware/test_host -B build-host
@@ -102,41 +107,24 @@ cmake --build build-host
 ctest --test-dir build-host --output-on-failure
 ```
 
-## Estrutura
+## Layout
 
 ```
 firmware/
-  src/                 interface (ui.c), núcleo (main.c), servidor web, configurações
-  components/          áudio, cartão, tela, rede, formatos de gravação, idiomas…
-  lang/                textos em português e inglês
-  c6/                  firmware do chip de Wi-Fi (ESP-Hosted) e como recompilá-lo
-  test_host/           testes no computador
-  tools/ota.sh         envio de firmware pelo Wi-Fi
-docs/                  documentação do projeto
+  src/                 UI (ui.c), core (main.c), web server, settings
+  components/          audio, card, display, network, recording formats, languages…
+  lang/                English and Portuguese texts
+  c6/                  Wi-Fi chip firmware (ESP-Hosted) and how to rebuild it
+  test_host/           host-side tests
+  tools/ota.sh         firmware upload over Wi-Fi
+docs/                  project documentation
 ```
 
-Mais detalhes em [docs/arquitetura.md](docs/arquitetura.md) (como o firmware é organizado),
-[docs/validacao-placa.md](docs/validacao-placa.md) (testes feitos na placa) e
-[docs/TODO.md](docs/TODO.md) (próximos passos).
+More details in [docs/architecture.md](docs/architecture.md) (how the firmware is organized),
+[docs/board-validation.md](docs/board-validation.md) (tests run on the board) and
+[docs/TODO.md](docs/TODO.md) (next steps).
 
-## Licença
+## License
 
-O código deste projeto está sob a licença MIT (arquivo [LICENSE](LICENSE)). Componentes de terceiros
-mantêm as licenças deles; veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-
----
-
-## English summary
-
-**P4 Recorder** is a portable meeting recorder with a touchscreen, built on the **Guition JC4880P443C_I_W_Y** board
-(ESP32-P4 + ESP32-C6, 4.3" display). It records to microSD as WAV, Opus or MP3, serves the recordings
-on a password-protected web page on the local network (or on its own Wi-Fi access point), works as a
-USB drive, mirrors its settings to an editable `CONFIG.JSON` on the card, and updates its own firmware
-(and the ESP32-C6 Wi-Fi firmware) over Wi-Fi. The UI is in Portuguese and English, and more languages
-can be added as JSON files on the card.
-
-Build with PlatformIO from the `firmware/` folder (`pio run`); flash over USB the first time, then use
-`firmware/tools/ota.sh <hostname>` or the web page for over-the-air updates. Host-side unit tests live in
-`firmware/test_host`. Developed on an ESP32-P4 rev 1.3 board, which is why `esp_audio_codec` is pinned
-to 2.5.x. Licensed under MIT; third-party components keep their own licenses (see
-`THIRD_PARTY_NOTICES.md`).
+This project's code is under the MIT license (see [LICENSE](LICENSE)). Third-party components keep
+their own licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

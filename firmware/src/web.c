@@ -43,7 +43,7 @@ static char s_auth[2][128];
 static volatile int s_auth_idx;
 
 static const char PAGE[] =
-    "<!doctype html><html lang=pt-BR><meta charset=utf-8>"
+    "<!doctype html><html lang=en><meta charset=utf-8>"
     "<meta name=viewport content='width=device-width,initial-scale=1'>"
     "<title>Gravador</title><style>"
     ":root{color-scheme:dark}*{box-sizing:border-box}"

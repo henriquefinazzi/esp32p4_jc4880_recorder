@@ -27,11 +27,11 @@ typedef struct {
 
 // Idiomas já carregados ficam na memória (nunca são liberados): o servidor web lê textos
 // em outra tarefa, e trocar de idioma só troca o ponteiro s_cur.
-static table_t s_base;                     // português, sempre carregado
+static table_t s_base;                     // inglês, sempre carregado (reserva)
 static table_t s_cache[I18N_MAX_LANGS];    // outros idiomas carregados
 static int s_cached;
-static const table_t *volatile s_cur;      // NULL: português
-static char s_code[I18N_CODE_MAX + 1] = "pt";
+static const table_t *volatile s_cur;      // NULL: inglês
+static char s_code[I18N_CODE_MAX + 1] = "en";
 
 static void table_free(table_t *t)
 {
@@ -146,16 +146,16 @@ static char *source_for(const char *code, bool *builtin)
 
 void i18n_init(const char *code)
 {
-    if (!table_load(&s_base, pt_json_start)) ESP_LOGE(TAG, "pt.json embutido com erro");
-    if (code && code[0] && !i18n_set(code)) ESP_LOGW(TAG, "idioma %s indisponivel; usando pt", code);
+    if (!table_load(&s_base, en_json_start)) ESP_LOGE(TAG, "embedded en.json is invalid");
+    if (code && code[0] && !i18n_set(code)) ESP_LOGW(TAG, "language %s unavailable; using en", code);
 }
 
 bool i18n_set(const char *code)
 {
     if (!code || !code[0] || strlen(code) > I18N_CODE_MAX) return false;
-    if (strcmp(code, "pt") == 0) {
+    if (strcmp(code, "en") == 0) {
         s_cur = NULL;
-        snprintf(s_code, sizeof(s_code), "pt");
+        snprintf(s_code, sizeof(s_code), "en");
         return true;
     }
     for (int i = 0; i < s_cached; i++) {
@@ -231,7 +231,7 @@ bool i18n_parse_header(const char *json, char code[I18N_CODE_MAX + 1], char name
 int i18n_list(i18n_lang_t *out, int max)
 {
     int n = 0;
-    const char *builtins[] = {pt_json_start, en_json_start};
+    const char *builtins[] = {en_json_start, pt_json_start};
     for (int i = 0; i < 2 && n < max; i++) {
         if (i18n_parse_header(builtins[i], out[n].code, out[n].name)) {
             out[n].builtin = true;

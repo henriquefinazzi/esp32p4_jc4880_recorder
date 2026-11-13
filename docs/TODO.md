@@ -1,16 +1,16 @@
 # TODO
 
-Planejado para depois da versão 1.0.
+Planned for after version 1.0.
 
-- [ ] **Bateria:** medir o consumo (gravando com a tela apagada), mostrar a carga na barra superior e
-  fechar a gravação com segurança quando a bateria estiver no fim. Antes: conferir no esquema se a tensão
-  da bateria chega a um pino de leitura (ADC).
-- [ ] **Busca pelo nome da gravação:** na lista do aparelho e na página.
-- [ ] **Marcadores nas reuniões:** um toque durante a gravação marca o momento; os marcadores aparecem
-  na lista e na página.
+- [ ] **Battery:** measure consumption (recording with the screen off), show the charge in the top bar and
+  close the recording safely when the battery is nearly empty. First: check in the schematic whether the
+  battery voltage reaches a readable pin (ADC).
+- [ ] **Search by recording name:** in the list on the device and on the web page.
+- [ ] **Meeting markers:** a tap during recording marks the moment; the markers show up in the list and on
+  the web page.
 
-Feito:
+Done:
 
-- [x] Atualização do firmware do ESP32-C6 pelo aparelho (Ajustes > Sobre).
-- [x] Bloqueio do acesso pelo navegador depois de várias senhas erradas.
-- [x] Bloqueio de tela com código numérico.
+- [x] ESP32-C6 firmware update from the device (Settings > About).
+- [x] Browser access lockout after several wrong passwords.
+- [x] Screen lock with a numeric code.

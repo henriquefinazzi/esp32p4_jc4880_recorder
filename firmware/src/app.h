@@ -65,7 +65,7 @@ void app_set_gain_db(int db);            // limita ao intervalo e guarda como pa
 int app_screen_timeout_s(void);          // 0 = nunca apagar
 void app_set_screen_timeout_s(int seconds);
 
-// Idioma da interface (código: pt, en ou um arquivo IDIOMAS/<código>.json do cartão).
+// Idioma da interface (código: pt, en ou um arquivo LANGUAGES/<código>.json do cartão).
 #define APP_LANG_MAX 15
 void app_language(char out[APP_LANG_MAX + 1]);
 void app_set_language(const char *code); // a tela troca no próximo ciclo

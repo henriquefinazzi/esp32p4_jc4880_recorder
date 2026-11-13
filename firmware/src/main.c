@@ -85,7 +85,7 @@ static volatile bool s_autodelete;
 static volatile bool s_lock_on;
 static char s_lock_pin[APP_LOCK_PIN_MAX + 1];
 static volatile int s_lock_after_s = 300;
-static char s_lang[APP_LANG_MAX + 1] = "pt";
+static char s_lang[APP_LANG_MAX + 1] = "en"; // aparelho novo começa em inglês
 static char s_web_user[APP_WEB_USER_MAX + 1] = "recorder";
 static char s_web_pass[APP_WEB_PASS_MAX + 1];
 static char s_hostname[APP_HOSTNAME_MAX + 1] = "p4recorder";
@@ -961,7 +961,7 @@ void app_main(void)
     // só é salvo na troca de tarefas quando a tarefa não muda de núcleo.
     xTaskCreatePinnedToCore(recorder_task, "gravacao", 32 * 1024, NULL, 5, NULL, 1);
 
-    i18n_init(s_lang); // depois do cartão: idiomas extras vêm da pasta IDIOMAS
+    i18n_init(s_lang); // depois do cartão: idiomas extras vêm da pasta LANGUAGES
     if (disp_err == ESP_OK) ui_init();
 
     xTaskCreate(mem_task, "mem", 3072, NULL, 1, NULL);

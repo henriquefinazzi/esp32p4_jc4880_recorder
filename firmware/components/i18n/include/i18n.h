@@ -2,13 +2,13 @@
 // Cada idioma é um arquivo JSON plano de chave -> texto, com "_codigo" e "_nome":
 //   { "_codigo": "en", "_nome": "English", "home.ready": "Ready to record", ... }
 // Português (pt) e inglês (en) vêm embutidos no firmware (firmware/lang/*.json).
-// Outros idiomas: um arquivo <codigo>.json na pasta IDIOMAS do cartão.
-// Texto que faltar no idioma escolhido sai em português; se faltar também, sai a chave.
+// Outros idiomas: um arquivo <codigo>.json na pasta LANGUAGES do cartão.
+// Texto que faltar no idioma escolhido sai em inglês; se faltar também, sai a chave.
 #pragma once
 
 #include <stdbool.h>
 
-#define I18N_DIR "/sdcard/IDIOMAS"
+#define I18N_DIR "/sdcard/LANGUAGES"
 #define I18N_CODE_MAX 15
 #define I18N_NAME_MAX 31
 #define I18N_MAX_LANGS 12

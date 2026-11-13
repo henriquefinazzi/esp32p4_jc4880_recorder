@@ -131,7 +131,7 @@
   "hostname.rule": "Lowercase letters, numbers and hyphens.",
   "hostname.title": "Network name",
   "lang.card": "From card",
-  "lang.footer": "For other languages, put a <code>.json file in the IDIOMAS folder on the card, in the same format as en.json.",
+  "lang.footer": "For other languages, put a <code>.json file in the LANGUAGES folder on the card, in the same format as en.json.",
   "lang.title": "Language",
   "list.delete_many.fail_text": "Cannot delete while recording.",
   "list.delete_many.fail_title": "Some were not deleted",

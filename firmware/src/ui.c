@@ -980,7 +980,7 @@ static void build_reccfg(void)
     switch_row(T("reccfg.autodel"), T("reccfg.autodel_sub"), app_autodelete_enabled(), autodel_sw_cb);
 }
 
-// Ajustes > Idioma: embutidos e os da pasta IDIOMAS do cartão.
+// Ajustes > Idioma: embutidos e os da pasta LANGUAGES do cartão.
 static i18n_lang_t s_langs[I18N_MAX_LANGS];
 
 static void lang_cb(lv_event_t *e)

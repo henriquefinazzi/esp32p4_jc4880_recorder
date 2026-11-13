@@ -131,7 +131,7 @@
   "hostname.rule": "Letras minúsculas, números e hífen.",
   "hostname.title": "Nome na rede",
   "lang.card": "Do cartão",
-  "lang.footer": "Para outros idiomas, coloque no cartão, na pasta IDIOMAS, um arquivo <código>.json no mesmo formato do pt.json.",
+  "lang.footer": "Para outros idiomas, coloque no cartão, na pasta LANGUAGES, um arquivo <código>.json no mesmo formato do pt.json.",
   "lang.title": "Idioma",
   "list.delete_many.fail_text": "Não é possível apagar durante uma gravação.",
   "list.delete_many.fail_title": "Algumas não foram apagadas",

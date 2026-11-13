@@ -1,9 +1,9 @@
-# Shine (codificador MP3)
+# Shine (MP3 encoder)
 
-Cópia de `src/lib` de https://github.com/toots/shine, commit
-ab5e3526b64af1a2eaa43aa6f441a7312e013519 (1 jan 2023), sem alterações.
+Copy of `src/lib` from https://github.com/toots/shine, commit
+ab5e3526b64af1a2eaa43aa6f441a7312e013519 (Jan 1, 2023), unmodified.
 
-Licença: LGPL-2.0-only, GNU Library General Public License v2 (arquivo COPYING). Usado pelo componente `rec_writer` para gravar em MP3.
-Se o firmware compilado for distribuído, a LGPL exige avisar que ele contém o Shine, incluir o
-COPYING e permitir que o usuário recompile com outra versão desta biblioteca: indicar o código-fonte
-exato do projeto e como compilá-lo atende a isso (ver THIRD_PARTY_NOTICES.md na raiz).
+License: LGPL-2.0-only, GNU Library General Public License v2 (COPYING file). Used by the `rec_writer` component to record MP3.
+If the compiled firmware is distributed, the LGPL requires stating that it contains Shine, including
+COPYING and allowing the user to rebuild it with another version of this library: pointing to the
+project's exact source code and how to build it satisfies this (see THIRD_PARTY_NOTICES.md in the root).
