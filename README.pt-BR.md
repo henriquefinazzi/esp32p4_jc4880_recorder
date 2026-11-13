@@ -49,11 +49,15 @@ modo pendrive.
 ## Baixar
 
 Cada [versão publicada](https://github.com/henriquefinazzi/esp32p4_jc4880_recorder/releases) traz uma imagem pronta
-para gravar. Grave no endereço 0x0 pela USB-C de console:
+para gravar. Ligue a USB-C de console da placa e use uma das opções:
 
-```bash
-esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
-```
+- **Pelo navegador (sem instalar nada):** abra <https://web.esphome.io/> no Chrome ou no Edge, clique em
+  **Connect**, escolha a porta serial da placa, clique em **Install** e selecione `p4-recorder-v0.4-full.bin`.
+- **Pela linha de comando**, gravando no endereço 0x0:
+
+  ```bash
+  esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
+  ```
 
 A imagem completa apaga as configurações salvas no aparelho; as gravações no Cartão-SD são mantidas.
 

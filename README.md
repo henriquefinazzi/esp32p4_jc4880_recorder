@@ -50,11 +50,15 @@ port, used in USB drive mode.
 ## Download
 
 A ready-to-flash image is attached to each [release](https://github.com/henriquefinazzi/esp32p4_jc4880_recorder/releases).
-Flash it at offset 0x0 through the console USB-C port:
+Connect the board's console USB-C port and use either option:
 
-```bash
-esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
-```
+- **From the browser (no install):** open <https://web.esphome.io/> in Chrome or Edge, click **Connect**,
+  pick the board's serial port, click **Install** and choose `p4-recorder-v0.4-full.bin`.
+- **From the command line**, flashing at offset 0x0:
+
+  ```bash
+  esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
+  ```
 
 The full image erases the device's saved settings; recordings on the SD-Card are kept.
 
