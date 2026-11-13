@@ -14,7 +14,7 @@ Planned for after version 1.0.
 - [ ] **Direct updates from the web:** check the GitHub repository for a new release and install it
   from the device, without downloading the firmware by hand.
 - [ ] **Recording format on the home screen:** show the selected file format (WAV, Opus or MP3).
-- [ ] **Wi-Fi information on the home screen:** network name and signal (or the device's own network).
+- [ ] **Wi-Fi information on the home screen:** network name and signal (or the device's hotspot).
 - [ ] **Animated Wi-Fi rescan button:** spin the button while the scan is running.
 
 Done:

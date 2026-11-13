@@ -17,7 +17,7 @@ gravações numa página web na rede local e funciona como pendrive pela USB.
 - **Cartão cheio:** opção de apagar as gravações mais antigas automaticamente.
 - **Página web** na rede local (`http://<nome>.local`): ouvir, baixar, renomear e apagar gravações,
   com usuário e senha. Cinco senhas erradas bloqueiam o endereço por 5 minutos.
-- **Rede própria (ponto de acesso):** o gravador cria uma rede Wi-Fi para o celular se conectar direto,
+- **Hotspot (ponto de acesso):** o gravador cria uma rede Wi-Fi para o celular se conectar direto,
   sem roteador, com QR code para entrar.
 - **Modo pendrive:** pela USB de alta velocidade, o cartão aparece no computador. Ao ejetar, volta ao aparelho.
 - **Configurações no cartão:** um arquivo `CONFIG.JSON` (oculto) espelha todas as configurações e pode
@@ -67,7 +67,7 @@ firmware/tools/ota.sh <nome-na-rede>      # compila e envia; pede a senha do nav
 ```
 
 Ou pela página web do gravador, em **Firmware → Atualizar firmware…** (aparece com as funções de
-desenvolvedor ligadas, em Ajustes → Desenvolvedor).
+desenvolvedor ligadas, em Ajustes → Modo desenvolvedor).
 
 ## Primeiro uso
 
@@ -75,7 +75,7 @@ desenvolvedor ligadas, em Ajustes → Desenvolvedor).
 2. Em **Ajustes → Wi-Fi**, escolha a rede e digite a senha (só redes de 2,4 GHz).
 3. Em **Ajustes → Acesso pelo navegador** aparecem o endereço (de fábrica, `http://p4recorder.local`),
    o usuário (`recorder`) e a senha (sorteada na primeira vez). Abra o endereço num computador ou
-   celular na mesma rede. Sem roteador, ligue a **rede própria** (`P4Recorder-XXXX`) e abra
+   celular na mesma rede. Sem roteador, ligue o **hotspot** (`P4Recorder-XXXX`) e abra
    `http://192.168.4.1`.
 
 ## Configurações pelo cartão

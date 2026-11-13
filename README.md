@@ -17,7 +17,7 @@ on a web page on the local network and works as a USB drive.
 - **Full card:** option to delete the oldest recordings automatically.
 - **Web page** on the local network (`http://<name>.local`): play, download, rename and delete recordings,
   protected by a username and password. Five wrong passwords block the address for 5 minutes.
-- **Own network (access point):** the recorder creates a Wi-Fi network so a phone can connect directly,
+- **Hotspot (access point):** the recorder creates a Wi-Fi network so a phone can connect directly,
   without a router, with a QR code to join.
 - **USB drive mode:** over the high-speed USB port, the card shows up on the computer. When ejected, it goes
   back to the device.
@@ -68,7 +68,7 @@ firmware/tools/ota.sh <hostname>          # builds and uploads; asks for the bro
 ```
 
 You can also use the recorder's web page, under **Firmware → Update firmware…** (shown when developer
-functions are turned on, in Settings → Developer).
+functions are turned on, in Settings → Developer mode).
 
 ## First use
 
@@ -76,7 +76,7 @@ functions are turned on, in Settings → Developer).
 2. In **Settings → Wi-Fi**, pick the network and type the password (2.4 GHz networks only).
 3. **Settings → Browser access** shows the address (by default `http://p4recorder.local`), the
    username (`recorder`) and the password (randomly generated on first boot). Open the address on a
-   computer or phone on the same network. Without a router, turn on the **own network**
+   computer or phone on the same network. Without a router, turn on the **hotspot**
    (`P4Recorder-XXXX`) and open `http://192.168.4.1`.
 
 ## Settings on the card

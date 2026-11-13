@@ -17,6 +17,7 @@
 #include "esp_netif_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "nvs.h"
 
@@ -40,6 +41,16 @@ static volatile bool s_auto_attempt; // the current attempt is automatic, not re
 
 static net_ap_t s_aps[NET_MAX_APS];
 static void (*s_saved_changed)(void);
+// Calls into the Wi-Fi chip (RPC over SDIO) are serialized here: a scan running in its own task
+// while the UI asked for the signal level or the chip version made one call read the other's
+// reply and crash. Values the UI polls are cached and refreshed only when the chip is free.
+static SemaphoreHandle_t s_rpc;
+static char s_c6_ver[24];
+static uint8_t s_sta_mac[6];
+static bool s_sta_mac_ok;
+static int8_t s_rssi;
+static uint8_t s_channel;
+static TickType_t s_link_read_at;
 static char s_ntp[64] = "pool.ntp.org";
 static volatile long long s_last_sync;
 static esp_netif_t *s_ap_netif;
@@ -238,7 +249,14 @@ esp_err_t net_init(void)
     if (err == ESP_OK) err = esp_wifi_start();
     if (err != ESP_OK) return err;
 
+    s_rpc = xSemaphoreCreateMutex();
     s_ready = true;
+    // Read once, before any other task talks to the chip.
+    esp_hosted_coprocessor_fwver_t v = {0};
+    if (esp_hosted_get_coprocessor_fwversion(&v) == ESP_OK) {
+        snprintf(s_c6_ver, sizeof(s_c6_ver), "%lu.%lu.%lu", (unsigned long)v.major1, (unsigned long)v.minor1, (unsigned long)v.patch1);
+    }
+    s_sta_mac_ok = esp_wifi_get_mac(WIFI_IF_STA, s_sta_mac) == ESP_OK;
     ap_apply();
     xTaskCreate(autoconnect_task, "net_auto", 4096, NULL, 3, NULL);
     return ESP_OK;
@@ -278,7 +296,10 @@ static void scan_task(void *arg)
         vTaskDelay(pdMS_TO_TICKS(500));
         scan_err = esp_wifi_scan_start(NULL, true);
     }
-    if (scan_err == ESP_OK && esp_wifi_scan_get_ap_records(&n, recs) == ESP_OK) {
+    xSemaphoreTake(s_rpc, portMAX_DELAY);
+    esp_err_t list_err = scan_err == ESP_OK ? esp_wifi_scan_get_ap_records(&n, recs) : scan_err;
+    xSemaphoreGive(s_rpc);
+    if (list_err == ESP_OK) {
         for (int i = 0; i < n && count < NET_MAX_APS; i++) {
             const char *ssid = (const char *)recs[i].ssid;
             if (!ssid[0]) continue; // hidden network
@@ -370,15 +391,24 @@ bool net_info(net_info_t *out)
     if (esp_netif_get_dns_info(s_netif, ESP_NETIF_DNS_MAIN, &dns) == ESP_OK) {
         esp_ip4addr_ntoa(&dns.ip.u_addr.ip4, out->dns, sizeof(out->dns));
     }
-    uint8_t mac[6];
-    if (esp_wifi_get_mac(WIFI_IF_STA, mac) == ESP_OK) {
-        snprintf(out->mac, sizeof(out->mac), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    if (s_sta_mac_ok) {
+        const uint8_t *m = s_sta_mac;
+        snprintf(out->mac, sizeof(out->mac), "%02X:%02X:%02X:%02X:%02X:%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
     }
-    wifi_ap_record_t ap;
-    if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
-        out->rssi = ap.rssi;
-        out->channel = ap.primary;
+    // Signal level: asked to the chip at most every 5 s, never during a scan, and never waiting
+    // for another call to finish (the UI polls this several times a second).
+    if (!s_scan_running && (s_link_read_at == 0 || xTaskGetTickCount() - s_link_read_at > pdMS_TO_TICKS(5000)) &&
+        xSemaphoreTake(s_rpc, 0) == pdTRUE) {
+        wifi_ap_record_t ap;
+        if (esp_wifi_sta_get_ap_info(&ap) == ESP_OK) {
+            s_rssi = ap.rssi;
+            s_channel = ap.primary;
+        }
+        s_link_read_at = xTaskGetTickCount();
+        xSemaphoreGive(s_rpc);
     }
+    out->rssi = s_rssi;
+    out->channel = s_channel;
     return true;
 }
 
@@ -483,12 +513,8 @@ static volatile int s_c6_progress = -1;
 
 bool net_wifi_fw_version(char out[24])
 {
-    out[0] = 0;
-    if (!s_ready) return false;
-    esp_hosted_coprocessor_fwver_t v = {0};
-    if (esp_hosted_get_coprocessor_fwversion(&v) != ESP_OK) return false;
-    snprintf(out, 24, "%lu.%lu.%lu", (unsigned long)v.major1, (unsigned long)v.minor1, (unsigned long)v.patch1);
-    return true;
+    strlcpy(out, s_c6_ver, 24); // read once at start-up (see net_init)
+    return out[0] != 0;
 }
 
 const char *net_wifi_fw_bundled(void)
