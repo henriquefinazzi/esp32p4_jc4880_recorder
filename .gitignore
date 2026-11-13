@@ -10,3 +10,4 @@ managed_components/
 .vscode/
 *.swp
 compile_commands.json
+release/

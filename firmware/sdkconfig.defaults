@@ -63,3 +63,6 @@ CONFIG_TINYUSB_MSC_MOUNT_PATH="/sdcard"
 # Wi-Fi update: if the new firmware never confirms it booted fine,
 # the next restart rolls back to the previous one.
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+
+# TLS buffers in PSRAM: internal RAM is tight, and HTTPS (updates from GitHub) needs ~40 KB.
+CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC=y

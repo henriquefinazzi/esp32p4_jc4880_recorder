@@ -23,8 +23,9 @@ on a web page on the local network and works as a USB drive.
   back to the device.
 - **Settings on the card:** a hidden `CONFIG.JSON` file mirrors all settings and can be edited on a
   computer; the device applies the changes when the card comes back.
-- **Firmware updates over Wi-Fi**, from the web page or the command line, with automatic rollback to the
-  previous version if the new one fails to boot. The Wi-Fi chip (ESP32-C6) is also updated by the device.
+- **Firmware updates over Wi-Fi**: the device checks this repository's latest release and installs it
+  (Settings → About → Firmware update), or an update can be sent from the web page or the command line.
+  If the new version fails to boot, the device goes back to the previous one. The Wi-Fi chip (ESP32-C6) is also updated by the device.
 - **Screen lock** with a numeric code and **light/dark theme**.
 - **Languages:** English and Portuguese built in (the device starts in English); other languages can be
   added as files on the card, without rebuilding.
@@ -53,14 +54,19 @@ A ready-to-flash image is attached to each [release](https://github.com/henrique
 Connect the board's console USB-C port and use either option:
 
 - **From the browser (no install):** open <https://web.esphome.io/> in Chrome or Edge, click **Connect**,
-  pick the board's serial port, click **Install** and choose `p4-recorder-v0.4-full.bin`.
+  pick the board's serial port, click **Install** and choose `p4-recorder-v<version>-full.bin`.
 - **From the command line**, flashing at offset 0x0:
 
   ```bash
-  esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
+  esptool --chip esp32p4 write-flash 0x0 p4-recorder-v<version>-full.bin
   ```
 
 The full image erases the device's saved settings; recordings on the SD-Card are kept.
+
+Once the device runs version 0.5 or later, the next versions can be installed from the device itself:
+**Settings → About → Firmware update** checks the latest release and, when there is a newer one, downloads
+the `-ota.bin` file attached to it over Wi-Fi. Settings are kept. Pre-releases (such as `0.5-rc1`) are not
+offered there; install them by hand.
 
 ## Build and flash
 
@@ -110,6 +116,18 @@ them, change `_codigo` (language code) and `_nome` (language name), translate it
 as `LANGUAGES/<code>.json` (i.e. `/sdcard/LANGUAGES/<code>.json`). It shows up in **Settings → Language**.
 Missing texts fall back to English.
 
+## Publishing a release
+
+```bash
+firmware/tools/make_release.sh
+```
+
+It builds the firmware and writes to `firmware/release/` the full image (`-full.bin`, for the first
+flash), the update file (`-ota.bin`, used by the device's update check), the license package and
+`SHA256SUMS.txt`. Attach all of them to a GitHub release whose tag is `v<version>` (the version in
+`firmware/src/app.h`). The device only offers a release whose version is newer than its own and that has
+an `-ota.bin` file.
+
 ## Tests
 
 The plain-C parts (WAV writer, Ogg Opus packaging, MP3, audio filter, `CONFIG.JSON` parsing) have tests
@@ -132,6 +150,7 @@ firmware/
   c6/                  Wi-Fi chip firmware (ESP-Hosted) and how to rebuild it
   test_host/           host-side tests
   tools/ota.sh         firmware upload over Wi-Fi
+  tools/make_release.sh  release files for GitHub
 docs/                  project documentation
 ```
 

@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#define APP_VERSION "0.4"
+#define APP_VERSION "0.5-rc1"
 #define APP_GAIN_MIN_DB 0
 #define APP_GAIN_MAX_DB 42
 #define APP_GAIN_STEP_DB 6 // ES8311 preamp steps

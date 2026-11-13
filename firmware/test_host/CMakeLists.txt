@@ -49,3 +49,8 @@ target_include_directories(test_audio_dsp PRIVATE ../components/audio_dsp/includ
 target_compile_options(test_audio_dsp PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(test_audio_dsp PRIVATE m)
 add_test(NAME audio_dsp COMMAND test_audio_dsp)
+
+add_executable(test_fwversion test_fwversion.c ../components/fwversion/fwversion.c)
+target_include_directories(test_fwversion PRIVATE ../components/fwversion/include)
+target_compile_options(test_fwversion PRIVATE -Wall -Wextra -Werror)
+add_test(NAME fwversion COMMAND test_fwversion)

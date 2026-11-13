@@ -22,8 +22,9 @@ gravações numa página web na rede local e funciona como pendrive pela USB.
 - **Modo pendrive:** pela USB de alta velocidade, o cartão aparece no computador. Ao ejetar, volta ao aparelho.
 - **Configurações no cartão:** um arquivo `CONFIG.JSON` (oculto) espelha todas as configurações e pode
   ser editado no computador; o aparelho aplica as mudanças quando o cartão volta.
-- **Atualização de firmware pelo Wi-Fi**, pela página ou por linha de comando, com volta automática à
-  versão anterior se a nova não iniciar. O chip de Wi-Fi (ESP32-C6) também é atualizado pelo aparelho.
+- **Atualização de firmware pelo Wi-Fi**: o aparelho consulta a versão mais recente publicada neste
+  repositório e a instala (Ajustes → Sobre → Atualização de firmware), ou a atualização pode ser enviada pela
+  página ou por linha de comando. Se a nova versão não iniciar, o aparelho volta à anterior. O chip de Wi-Fi (ESP32-C6) também é atualizado pelo aparelho.
 - **Bloqueio de tela** com código numérico e **tema claro/escuro**.
 - **Idiomas:** português e inglês embutidos (o aparelho começa em inglês); outros idiomas por arquivo no
   cartão, sem recompilar.
@@ -52,14 +53,19 @@ Cada [versão publicada](https://github.com/henriquefinazzi/esp32p4_jc4880_recor
 para gravar. Ligue a USB-C de console da placa e use uma das opções:
 
 - **Pelo navegador (sem instalar nada):** abra <https://web.esphome.io/> no Chrome ou no Edge, clique em
-  **Connect**, escolha a porta serial da placa, clique em **Install** e selecione `p4-recorder-v0.4-full.bin`.
+  **Connect**, escolha a porta serial da placa, clique em **Install** e selecione `p4-recorder-v<versão>-full.bin`.
 - **Pela linha de comando**, gravando no endereço 0x0:
 
   ```bash
-  esptool --chip esp32p4 write-flash 0x0 p4-recorder-v0.4-full.bin
+  esptool --chip esp32p4 write-flash 0x0 p4-recorder-v<versão>-full.bin
   ```
 
 A imagem completa apaga as configurações salvas no aparelho; as gravações no Cartão-SD são mantidas.
+
+A partir da versão 0.5, as próximas versões podem ser instaladas pelo próprio aparelho: **Ajustes → Sobre
+→ Atualização de firmware** consulta a versão mais recente publicada e, se houver uma mais nova, baixa pelo
+Wi-Fi o arquivo `-ota.bin` anexado a ela. As configurações são mantidas. Versões de teste (como
+`0.5-rc1`) não aparecem ali; instale-as manualmente.
 
 ## Compilar e gravar
 
@@ -106,6 +112,18 @@ Os textos ficam em `firmware/lang/pt.json` e `firmware/lang/en.json` (chave → 
 copie um deles, troque `_codigo` e `_nome`, traduza e coloque no cartão como `LANGUAGES/<codigo>.json`.
 Ele aparece em **Ajustes → Idioma**. O aparelho começa em inglês; textos que faltarem saem em inglês.
 
+## Publicar uma versão
+
+```bash
+firmware/tools/make_release.sh
+```
+
+Ele compila o firmware e grava em `firmware/release/` a imagem completa (`-full.bin`, para a primeira
+gravação), o arquivo de atualização (`-ota.bin`, usado pela consulta do aparelho), o pacote de licenças e
+o `SHA256SUMS.txt`. Anexe todos a uma versão no GitHub com a tag `v<versão>` (a versão em
+`firmware/src/app.h`). O aparelho só oferece uma versão mais nova que a dele e que tenha o arquivo
+`-ota.bin`.
+
 ## Testes
 
 Partes em C puro (escrita de WAV, empacotamento Ogg Opus, MP3, filtro de áudio, leitura do
@@ -128,6 +146,7 @@ firmware/
   c6/                  firmware do chip de Wi-Fi (ESP-Hosted) e como recompilá-lo
   test_host/           testes no computador
   tools/ota.sh         envio de firmware pelo Wi-Fi
+  tools/make_release.sh  arquivos de versão para o GitHub
 docs/                  documentação do projeto
 ```
 

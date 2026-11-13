@@ -1,6 +1,7 @@
 // Recorder UI (LVGL 9), 480x800 portrait.
 // Recorder UI. Everything here runs in the LVGL task, except ui_init().
 #include "ui.h"
+#include "updater.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -1002,6 +1003,40 @@ static void build_lang(void)
 // ---------- About ----------
 
 static lv_obj_t *s_about_progress;
+static lv_obj_t *s_about_update;      // status line of the firmware update row
+static upd_state_t s_about_update_state;
+
+static void update_text(char *out, size_t len)
+{
+    switch (updater_state()) {
+    case UPD_CHECKING: strlcpy(out, T("update.checking"), len); break;
+    case UPD_UP_TO_DATE: strlcpy(out, T("update.up_to_date"), len); break;
+    case UPD_AVAILABLE: snprintf(out, len, T("update.available"), updater_latest()); break;
+    case UPD_DOWNLOADING: snprintf(out, len, T("update.downloading"), updater_progress()); break;
+    case UPD_DONE: strlcpy(out, T("update.done"), len); break;
+    case UPD_ERROR: strlcpy(out, T(updater_error_key()), len); break;
+    default: strlcpy(out, T("update.idle"), len); break;
+    }
+}
+
+static void update_install_action(void)
+{
+    updater_install_start();
+    show(SCR_ABOUT);
+}
+
+static void update_cb(lv_event_t *e)
+{
+    (void)e;
+    if (updater_state() == UPD_AVAILABLE) {
+        char title[64];
+        snprintf(title, sizeof(title), T("update.confirm.title"), updater_latest());
+        dialog_ex(title, T("update.confirm.text"), T("common.cancel"), T("update.install"), BTN_PRIMARY, NULL, update_install_action);
+        return;
+    }
+    updater_check_start();
+    show(SCR_ABOUT);
+}
 
 static void c6_update_action(void)
 {
@@ -1077,6 +1112,16 @@ static void build_about(void)
     data_row(c, T("about.memory"), mem, C_TEXT);
     data_row(c, T("about.uptime"), up, C_TEXT);
     data_row(c, T("about.reset"), reset_text(), C_TEXT);
+
+    // Firmware update from the project's GitHub releases.
+    char upd[96];
+    update_text(upd, sizeof(upd));
+    upd_state_t us = updater_state();
+    bool actionable = us == UPD_IDLE || us == UPD_UP_TO_DATE || us == UPD_ERROR || us == UPD_AVAILABLE;
+    lv_obj_t *ur = row(T("update.title"), upd, NULL, us == UPD_AVAILABLE ? LV_SYMBOL_DOWNLOAD : actionable ? LV_SYMBOL_REFRESH : NULL,
+                       us == UPD_AVAILABLE ? C_GREEN : C_MUTED, actionable ? update_cb : NULL, NULL);
+    s_about_update = lv_obj_get_child(lv_obj_get_child(ur, 0), 1); // the subtitle label
+    s_about_update_state = us;
 
     // Author logo (ink matching the theme) and the project's source code address.
     lv_obj_t *src = card(s_content, LV_FLEX_FLOW_COLUMN, 6);
@@ -2085,7 +2130,7 @@ static void show(screen_t s)
     s_keyboard = NULL;
     if (s != SCR_LIST) s_select_mode = false;
     s_cur = s;
-    s_home_space = s_rec_timer = s_rec_bar = s_rec_file = s_rec_gain = s_pass_ta = s_ap_clients = NULL;
+    s_home_space = s_rec_timer = s_rec_bar = s_rec_file = s_rec_gain = s_pass_ta = s_ap_clients = s_about_update = NULL;
     lv_obj_clean(s_content);
 
     // Default: top-aligned, scrollable column.
@@ -2322,6 +2367,15 @@ static void tick(lv_timer_t *t)
     }
 
     lock_tick(&st);
+    if (s_cur == SCR_ABOUT && s_about_update) {
+        if (updater_state() != s_about_update_state) {
+            if (!s_dialog) show(SCR_ABOUT); // new state: rebuild the row (icon and action change)
+        } else if (updater_state() == UPD_DOWNLOADING) {
+            char t[96];
+            update_text(t, sizeof(t));
+            lv_label_set_text(s_about_update, t);
+        }
+    }
     if (s_cur == SCR_ABOUT && s_about_progress) {
         int p = net_wifi_fw_update_progress();
         char t[64];
