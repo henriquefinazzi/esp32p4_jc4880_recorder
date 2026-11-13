@@ -125,7 +125,8 @@ firmware/tools/make_release.sh
 It builds the firmware and writes to `firmware/release/` the full image (`-full.bin`, for the first
 flash), the update file (`-ota.bin`, used by the device's update check), the license package and
 `SHA256SUMS.txt`. Attach all of them to a GitHub release whose tag is `v<version>` (the version in
-`firmware/src/app.h`). The device only offers a release whose version is newer than its own and that has
+`firmware/src/app.h`); the script stops if [CHANGELOG.md](CHANGELOG.md) has no section for that version.
+The device only offers a release whose version is newer than its own and that has
 an `-ota.bin` file.
 
 ## Tests

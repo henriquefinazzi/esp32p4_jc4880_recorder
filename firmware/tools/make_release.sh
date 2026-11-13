@@ -6,6 +6,7 @@
 #   SHA256SUMS.txt
 # The version comes from APP_VERSION in src/app.h. Devices look for the "-ota.bin" asset
 # when checking for updates, so every release must include it.
+# CHANGELOG.md (repository root) must have a "## [<version>]" section before a release is built.
 #   tools/make_release.sh            (from the firmware folder)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -16,6 +17,10 @@ VERSION=$(sed -n 's/^#define APP_VERSION "\(.*\)"/\1/p' src/app.h)
 BUILD="${PLATFORMIO_WORKSPACE_DIR:-.pio}/build/esp32p4"
 OUT=release
 NAME="p4-recorder-v$VERSION"
+grep -q "^## \[$VERSION\]" ../CHANGELOG.md || {
+  echo "CHANGELOG.md has no \"## [$VERSION]\" section; describe this version there first." >&2
+  exit 1
+}
 
 "$PIO" run
 rm -rf "$OUT" && mkdir -p "$OUT/licenses"

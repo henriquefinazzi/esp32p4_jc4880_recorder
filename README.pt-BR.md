@@ -121,7 +121,8 @@ firmware/tools/make_release.sh
 Ele compila o firmware e grava em `firmware/release/` a imagem completa (`-full.bin`, para a primeira
 gravação), o arquivo de atualização (`-ota.bin`, usado pela consulta do aparelho), o pacote de licenças e
 o `SHA256SUMS.txt`. Anexe todos a uma versão no GitHub com a tag `v<versão>` (a versão em
-`firmware/src/app.h`). O aparelho só oferece uma versão mais nova que a dele e que tenha o arquivo
+`firmware/src/app.h`); o script para se o [CHANGELOG.md](CHANGELOG.md) não tiver uma seção para essa
+versão. O aparelho só oferece uma versão mais nova que a dele e que tenha o arquivo
 `-ota.bin`.
 
 ## Testes
